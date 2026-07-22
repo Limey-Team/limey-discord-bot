@@ -1,0 +1,71 @@
+name: ✨ Feature Request
+description: Suggest an idea or enhancement for Limey
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! Please fill out the details below to help us understand your idea.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Is Your Feature Request Related to a Problem?
+      description: A clear and concise description of what the problem is. E.g., "I'm always frustrated when [...]"
+      placeholder: "I'm always frustrated when I have to manually close 20 tickets one by one..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the Solution You'd Like
+      description: A clear and concise description of what you want to happen.
+      placeholder: "I'd like a bulk close command that lets me close multiple tickets at once..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Describe Alternatives You've Considered
+      description: Any alternative solutions or features you've thought about.
+      placeholder: "I've considered using the dashboard to close them, but that's also manual..."
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Add any other context, screenshots, or examples about the feature request here.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: Which area of the bot does this feature relate to?
+      options:
+        - Moderation
+        - Event Logging
+        - Ticket System
+        - Modmail System
+        - Verification / Captcha
+        - Trap System
+        - Web Dashboard
+        - Backup / Restore
+        - Custom Bots
+        - API / Integration
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I have searched existing issues to avoid duplicates
+          required: true
+        - label: I have checked that this feature aligns with the project's scope
+          required: false

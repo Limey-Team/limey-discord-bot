@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discord Support Server
+    url: https://discord.gg/limey
+    about: For real-time support and community discussion about using Limey
+  - name: 📖 Documentation & FAQ
+    url: https://github.com/limey-bot/limey/blob/main/README.md
+    about: Check the README for setup guides, configuration, and common questions
+  - name: 🔒 Report a Security Vulnerability
+    url: https://github.com/limey-bot/limey/security/advisories/new
+    about: Please report security vulnerabilities via GitHub Security Advisories — do not open a public issue
+  - name: ❓ Question / Discussion
+    url: https://github.com/limey-bot/limey/discussions
+    about: Have a question or want to discuss something? Use GitHub Discussions

@@ -1,0 +1,98 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report! Please provide as much detail as possible to help us resolve the issue quickly.
+
+  - type: input
+    id: version
+    attributes:
+      label: Bot Version
+      description: What version of Limey are you running? You can find this using the `/version` command.
+      placeholder: "v1.1.0 or commit hash"
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js Version
+      description: What version of Node.js are you running?
+      placeholder: "e.g., v20.11.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: "When I use /ban, the bot responds with an error instead of banning the user..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Detailed steps that cause the bug to occur.
+      placeholder: |
+        1. Use `/ban user:@user reason:test`
+        2. Bot responds with "❌ I cannot ban this user"
+        3. The user has a lower role than the bot...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: "The user should have been banned from the server."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened instead?
+      placeholder: "The bot returned an error message."
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs / Screenshots
+      description: Please include any relevant console output, error messages, or screenshots.
+      render: shell
+
+  - type: dropdown
+    id: hosting
+    attributes:
+      label: Hosting Method
+      description: How are you hosting the bot?
+      options:
+        - Self-hosted (local/VPS)
+        - Self-hosted (cloud/Replit/Glitch/etc.)
+        - Official hosted instance
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I have searched existing issues to avoid duplicates
+          required: true
+        - label: I am running the latest version of the bot
+          required: false
+        - label: I have checked the console for error messages
+          required: false
