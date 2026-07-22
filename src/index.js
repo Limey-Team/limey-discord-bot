@@ -20,6 +20,7 @@ const gitSync = require('./git-sync');
 gitSync.init();
 
 const announce = require('./announce');
+const release = require('./release');
 const { startWebServer } = require('./web/server');
 const botManager = require('./botManager');
 const backupSystem = require('./backup');
@@ -68,6 +69,11 @@ manager.on('shardCreate', (shard) => {
     // Check for updates and send announcement to support server
     announce.init(manager).catch(err =>
       console.error('[Announce] Error during init:', err.message)
+    );
+
+    // Check for version changes and auto-create GitHub Release
+    release.init().catch(err =>
+      console.error('[Release] Error during init:', err.message)
     );
 
     // Start watching for new git commits to auto-update

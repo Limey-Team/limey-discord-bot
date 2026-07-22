@@ -20,6 +20,9 @@ A full-featured Discord bot with **comprehensive event logging, moderation tools
 - `/lock` / `/unlock` — Lock/unlock channels from @everyone
 - `/slowmode` — Set channel slowmode (0–21600 seconds)
 - `/botinfo` — Bot statistics (uptime, ping, guild count, memory, rate limits)
+- `/update` — View the latest changelog and recent git commits
+- `/health` — Check bot system health with real-time status (ping, memory, uptime)
+- `/version` — Show the current bot version and build information
 - `/logchannel` — Configure log channel for event embeds
 - `/logs` — Toggle individual event types on/off for the log channel
 - `/setupdm` — Get a link to install the bot to your account so it can DM you about punishments

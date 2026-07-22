@@ -202,4 +202,4 @@ async function init(manager) {
   }
 }
 
-module.exports = { init, checkAndAnnounce, getCurrentCommit };
+module.exports = { init, checkAndAnnounce, getCurrentCommit, getCommitsSince };

@@ -334,4 +334,4 @@ function startAutoUpdate() {
   }, intervalMs);
 }
 
-module.exports = { init, scheduleSync, pullConfig, forceSync, getStatus, startAutoUpdate };
+module.exports = { init, scheduleSync, pullConfig, forceSync, getStatus, startAutoUpdate, getGithubRepo };

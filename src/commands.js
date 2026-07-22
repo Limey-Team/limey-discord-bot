@@ -95,6 +95,18 @@ const botinfoCommand = new SlashCommandBuilder()
   .setName('botinfo')
   .setDescription('Show bot statistics and system information');
 
+const updateCommand = new SlashCommandBuilder()
+  .setName('update')
+  .setDescription('Show the latest changelog and recent updates for Limey');
+
+const healthCommand = new SlashCommandBuilder()
+  .setName('health')
+  .setDescription('Check the bot\'s system health and status');
+
+const versionCommand = new SlashCommandBuilder()
+  .setName('version')
+  .setDescription('Show the current bot version and build information');
+
 const verifyCommand = new SlashCommandBuilder()
   .setName('verify')
   .setDescription('Verify yourself to get the verified role');
@@ -176,7 +188,7 @@ const commands = [
   logChannelCommand, banCommand, unbanCommand, kickCommand,
   timeoutCommand, untimeoutCommand, purgeCommand, warnCommand,
   warningsCommand, clearWarningsCommand, lockCommand, unlockCommand, slowmodeCommand,
-  botinfoCommand, voteCommand, verifyCommand, verifysetupCommand, trapCommand, setupdmCommand, logsCommand,
+  botinfoCommand, updateCommand, healthCommand, versionCommand, voteCommand, verifyCommand, verifysetupCommand, trapCommand, setupdmCommand, logsCommand,
   backupCommand, backupsCommand, restoreCommand,
   ...ticketCommands,
   ...modmailCommands,

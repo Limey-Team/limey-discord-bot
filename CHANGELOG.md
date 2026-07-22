@@ -118,11 +118,21 @@ All notable changes to **Limey** — Discord Moderation, Logging & Management Bo
 
 ---
 
+## [1.1.0] — Changelog, Health, Update
+
+### New Features
+- Automatic update announcements sent to the support server announcement channel on new git commits
+- CHANGELOG.md for tracking version history
+- `/update` command — displays the latest changelog entry and recent git commits in a rich embed
+- `/health` command — shows bot system health with color-coded status (ping, uptime, memory, servers, etc.)
+- `/version` command — shows the current bot version and build information
+
+---
+
 ## [Unreleased]
 
 ### New Features
-- Automatic update announcements sent to the support server announcement channel
-- CHANGELOG.md for tracking version history
+- Automatic GitHub Release creation when the bot version changes — reads changelog section and creates a release via the GitHub API
 
 ---
 

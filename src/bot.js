@@ -2,6 +2,7 @@ const { EmbedBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle
 const logger = require('./logger');
 const store = require('./store');
 const backupSystem = require('./backup');
+const announce = require('./announce');
 const votes = require('./votes');
 const captchaGen = require('./captcha');
 const BOT_OWNER_ID = process.env.BOT_OWNER_ID || null;
@@ -793,6 +794,180 @@ function setupBot(client) {
         ).join('\n') + (totalRoutes > 5 ? '\n+ ' + (totalRoutes - 5) + ' more route(s)' : '');
         embed.addFields({ name: 'Rate Limits (by route)', value: routeStr.substring(0, 1024) });
       }
+
+      return interaction.reply({ embeds: [embed] });
+    }
+
+    // --- update ---
+    if (cmd === 'update') {
+      const fs = require('fs');
+      const path = require('path');
+
+      // Read the CHANGELOG.md file
+      const changelogPath = path.join(__dirname, '..', 'CHANGELOG.md');
+      let changelogContent = '';
+      try {
+        changelogContent = fs.readFileSync(changelogPath, 'utf8');
+      } catch {
+        return interaction.reply({ content: '❌ Could not read the changelog file.', flags: MessageFlags.Ephemeral });
+      }
+
+      // Parse the latest version section from the changelog
+      // Format: ## [version] — Description
+      // Content follows until the next ## heading or end of file
+      const versionMatch = changelogContent.match(/## \[([^\]]+)\] — ([^\n]+)\n\n([\s\S]*?)(?=\n## |$)/);
+      const version = versionMatch ? versionMatch[1] : 'Unknown';
+      const versionDesc = versionMatch ? versionMatch[2] : '';
+      const versionBody = versionMatch ? versionMatch[3].trim() : changelogContent.substring(0, 1500).trim();
+
+      // Get recent git commits (up to 5)
+      let recentCommits = [];
+      try {
+        const currentHash = announce.getCurrentCommit();
+        if (currentHash) {
+          // Get commits since the last recorded hash, or last 5 overall
+          const lastHash = (() => {
+            try {
+              const hashPath = path.join(__dirname, '..', 'database', 'last-commit.txt');
+              if (fs.existsSync(hashPath)) return fs.readFileSync(hashPath, 'utf8').trim();
+            } catch {}
+            return null;
+          })();
+          const commits = announce.getCommitsSince(lastHash, 5);
+          recentCommits = commits.map(line => {
+            const hash = line.substring(0, 7);
+            const msg = line.substring(8) || line;
+            return `\`${hash}\` ${msg}`;
+          });
+        }
+      } catch {}
+
+      const embed = new EmbedBuilder()
+        .setTitle('📜 Limey — Changelog')
+        .setColor(0x5865F2)
+        .setDescription([
+          `**Version:** [${version}]${versionDesc ? ' — ' + versionDesc : ''}`,
+          '',
+          versionBody.length > 3000 ? versionBody.substring(0, 3000) + '\n...' : versionBody,
+        ].join('\n'))
+        .setTimestamp()
+        .setFooter({ text: 'Limey Bot' });
+
+      if (recentCommits.length > 0) {
+        embed.addFields({
+          name: '🔄 Recent Commits',
+          value: recentCommits.join('\n'),
+        });
+      }
+
+      // Add link to full changelog
+      const repo = process.env.GITHUB_REPO || 'limey-bot/limey';
+      embed.addFields({
+        name: '🔗 Links',
+        value: `[Full Changelog](https://github.com/${repo}/blob/main/CHANGELOG.md) · [Git Commits](https://github.com/${repo}/commits/main)`,
+      });
+
+      return interaction.reply({ embeds: [embed] });
+    }
+
+    // --- health ---
+    if (cmd === 'health') {
+      const uptime = formatUptime(logger.uptime());
+      const ping = client.ws.ping;
+      const guildCount = client.guilds.cache.size;
+      const userCount = client.guilds.cache.reduce((acc, g) => acc + (g.memberCount || 0), 0);
+      const memory = process.memoryUsage();
+      const heapUsed = Math.round(memory.heapUsed / 1024 / 1024 * 100) / 100;
+      const heapTotal = Math.round(memory.heapTotal / 1024 / 1024 * 100) / 100;
+      const rss = Math.round(memory.rss / 1024 / 1024 * 100) / 100;
+      const uptimeSec = logger.uptime();
+      const ver = process.versions.node;
+      const djsVer = djsVersion;
+
+      // Determine health status
+      let statusEmoji = '✅';
+      let statusColor = 0x57F287;
+      let statusText = 'All systems operational';
+
+      if (ping > 300) {
+        statusEmoji = '⚠️';
+        statusColor = 0xFEE75C;
+        statusText = 'High latency detected';
+      }
+      if (ping > 1000) {
+        statusEmoji = '❌';
+        statusColor = 0xED4245;
+        statusText = 'Critical latency — may be unresponsive';
+      }
+      if (!client.isReady()) {
+        statusEmoji = '🔴';
+        statusColor = 0xED4245;
+        statusText = 'Bot is not ready';
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle('💚 ' + client.user.username + ' — System Health')
+        .setColor(statusColor)
+        .setThumbnail(client.user.displayAvatarURL())
+        .addFields(
+          { name: 'Status', value: `${statusEmoji} ${statusText}`, inline: false },
+          { name: 'Websocket Ping', value: ping + 'ms', inline: true },
+          { name: 'Uptime', value: uptime, inline: true },
+          { name: 'Servers', value: guildCount.toLocaleString(), inline: true },
+          { name: 'Users', value: userCount.toLocaleString(), inline: true },
+          { name: 'Memory (Heap)', value: `${heapUsed} MB / ${heapTotal} MB`, inline: true },
+          { name: 'Memory (RSS)', value: rss + ' MB', inline: true },
+          { name: 'Node.js', value: 'v' + ver, inline: true },
+          { name: 'discord.js', value: 'v' + djsVer, inline: true },
+        )
+        .setTimestamp()
+        .setFooter({ text: 'Limey Health Check' });
+
+      return interaction.reply({ embeds: [embed] });
+    }
+
+    // --- version ---
+    if (cmd === 'version') {
+      const fs = require('fs');
+      const path = require('path');
+
+      // Read version from package.json
+      let version = 'Unknown';
+      let description = '';
+      try {
+        const pkgPath = path.join(__dirname, '..', 'package.json');
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        version = pkg.version || 'Unknown';
+        description = pkg.description || '';
+      } catch {
+        // Fallback
+      }
+
+      // Get current commit hash
+      let commitHash = null;
+      try {
+        commitHash = announce.getCurrentCommit();
+      } catch {}
+
+      const embed = new EmbedBuilder()
+        .setTitle('📦 ' + client.user.username + ' — v' + version)
+        .setColor(0x5865F2)
+        .setThumbnail(client.user.displayAvatarURL())
+        .setDescription(description || 'Discord Moderation, Logging & Management Bot')
+        .addFields(
+          { name: 'Version', value: '**v' + version + '**', inline: true },
+          { name: 'Build', value: commitHash ? '`' + commitHash.substring(0, 7) + '`' : 'N/A', inline: true },
+          { name: 'Node.js', value: 'v' + process.versions.node, inline: true },
+          { name: 'discord.js', value: 'v' + djsVersion, inline: true },
+        )
+        .setTimestamp()
+        .setFooter({ text: 'Limey Bot' });
+
+      const repo = process.env.GITHUB_REPO || 'limey-bot/limey';
+      embed.addFields({
+        name: '🔗 Links',
+        value: `[Changelog](https://github.com/${repo}/blob/main/CHANGELOG.md) · [Releases](https://github.com/${repo}/releases) · [Commits](https://github.com/${repo}/commits/main)`,
+      });
 
       return interaction.reply({ embeds: [embed] });
     }
