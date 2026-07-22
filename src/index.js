@@ -25,6 +25,7 @@ const { startWebServer } = require('./web/server');
 const botManager = require('./botManager');
 const backupSystem = require('./backup');
 const votes = require('./votes');
+const dblApi = require('./dblApi');
 const { ShardClient } = require('./shard-client');
 
 const token = process.env.DISCORD_TOKEN;
@@ -79,6 +80,25 @@ manager.on('shardCreate', (shard) => {
     // Start watching for new git commits to auto-update
     gitSync.startAutoUpdate();
 
+    // ─── Discord Bot List (DBL) API stats posting ─────────────────────
+    if (dblApi.isConfigured()) {
+      // Post stats immediately on startup
+      postDblStats(manager).catch(err =>
+        console.error('[DBL API] Initial stats post failed:', err.message)
+      );
+
+      // Then every hour
+      setInterval(async () => {
+        await postDblStats(manager).catch(err =>
+          console.error('[DBL API] Periodic stats post failed:', err.message)
+        );
+      }, 60 * 60 * 1000);
+
+      console.log('[DBL API] Discord Bot List integration enabled (stats every hour)');
+    } else {
+      console.log('[DBL API] Not configured — set DBL_API_TOKEN to enable');
+    }
+
     // Periodically refresh the shard client's cache for the web server
     setInterval(() => {
       shardClient.refresh().catch(err =>
@@ -92,6 +112,49 @@ manager.on('shardCreate', (shard) => {
     process.exit(1);
   }
 })();
+
+/**
+ * Collect stats from all shards and post them to Discord Bot List.
+ */
+async function postDblStats(manager) {
+  const results = await manager.broadcastEval((c) => {
+    const guilds = [...c.guilds.cache.values()];
+    const totalUsers = guilds.reduce((acc, g) => acc + (g.memberCount || 0), 0);
+    return {
+      botId: c.user?.id || null,
+      guildCount: guilds.length,
+      userCount: totalUsers,
+      shardId: c.shard?.id ?? 0,
+    };
+  });
+
+  if (!results || results.length === 0) {
+    console.warn('[DBL API] No shard data collected');
+    return;
+  }
+
+  // Merge stats from all shards
+  let botId = null;
+  let totalGuilds = 0;
+  let totalUsers = 0;
+  for (const r of results) {
+    if (r.botId) botId = botId || r.botId;
+    totalGuilds += r.guildCount || 0;
+    totalUsers += r.userCount || 0;
+  }
+
+  if (!botId) {
+    console.warn('[DBL API] Could not determine bot ID');
+    return;
+  }
+
+  await dblApi.postStats(botId, {
+    guilds: totalGuilds,
+    users: totalUsers,
+    shard_id: 0,
+    shard_count: results.length,
+  });
+}
 
 // Graceful shutdown — forward SIGTERM/SIGINT to all shards
 async function shutdown() {

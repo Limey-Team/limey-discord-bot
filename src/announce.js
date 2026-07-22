@@ -180,17 +180,23 @@ async function init(manager) {
   // New commits! Try to announce via broadcastEval
   console.log('[Announce] 🔄 New commits detected — attempting announcement...');
 
-  // Pass the absolute path so it resolves correctly in the shard process
-  const announcePath = path.join(__dirname, 'announce.js');
+  // Use fetch to get shard count, then pick a single shard to announce.
+  // This avoids duplicate sends when multiple shards have the channel cached.
+  const shardCount = manager.totalShards;
+  const targetShard = 0; // Always use shard 0 for announcements
 
-  const result = await manager.broadcastEval(async (c, { absPath }) => {
+  const result = await manager.broadcastEval(async (c, { absPath, targetSid }) => {
+    // Only the target shard handles the announcement
+    const sid = c.shard?.id ?? 0;
+    if (sid !== targetSid) return { announced: false, reason: `Not target shard (shard ${sid})` };
+
     const announce = require(absPath);
     const r = await announce.checkAndAnnounce(c);
     if (r.announced) {
       console.log(`[Announce] ✅ Update announcement sent to support server`);
     }
     return r;
-  }, { context: { absPath: announcePath } });
+  }, { context: { absPath: announcePath, targetSid: targetShard } });
 
   // Log the results
   const announced = result.find(r => r && r.announced);

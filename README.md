@@ -268,6 +268,17 @@ When your bot runs on an ephemeral filesystem, all data files are lost on restar
 | `GIT_POLL_INTERVAL` | No | `60000` | How often (in ms) to check for new commits when auto-update is enabled |
 | `TOPGG_WEBHOOK_SECRET` | For vote webhooks | — | Webhook secret from Top.gg (HMAC verification for vote notifications) |
 | `DBL_WEBHOOK_SECRET` | For vote webhooks | — | Webhook secret from DiscordBotList.com (Authorization header verification) |
+| `DBL_API_TOKEN` | For DBL stats/commands | — | API token from [discordbotlist.com](https://discordbotlist.com/) — enables auto-posting stats and syncing slash commands to your bot's profile |
+
+### 8. Discord Bot List Integration (Optional)
+
+Limey can automatically integrate with [Discord Bot List](https://discordbotlist.com/) to:
+
+- **Auto-post stats** — every hour, the bot reports its guild count, total users, and shard count to discordbotlist.com. This keeps your bot's stats up-to-date on the listing.
+- **Sync slash commands** — after registering commands with Discord, Limey also syncs them to your bot's profile page on discordbotlist.com so visitors can see what commands your bot supports.
+- **Fetch votes** — the `/vote` command shows vote status and the existing `/dbl` webhook endpoint already handles vote notifications from DiscordBotList.com.
+
+To enable, set the `DBL_API_TOKEN` environment variable. You can find your API token in your bot's management dashboard at [discordbotlist.com](https://discordbotlist.com/).
 
 ## Changelog
 

@@ -67,9 +67,17 @@ captchaGen.initCaptcha().catch(err =>
     console.log(`[Shard ${SHARD_ID}] Logged in as ${client.user.tag}`);
 
     // Register commands once the client is fully ready
-    client.once('clientReady', async () => {
+    client.once('ready', async () => {
       await registerCommands(client);
     });
+
+    // Fallback: if ready was already emitted before the listener was added,
+    // check immediately
+    if (client.isReady()) {
+      registerCommands(client).catch(err =>
+        console.error(`[Shard ${SHARD_ID}] Failed to register commands (fallback):`, err.message)
+      );
+    }
   } catch (err) {
     console.error(`[Shard ${SHARD_ID}] Failed to start:`, err.message);
     process.exit(1);

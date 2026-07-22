@@ -2,6 +2,7 @@ const { REST, Routes, SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } =
 const { ticketCommands } = require('./tickets');
 const { modmailCommands } = require('./modmail');
 const votes = require('./votes');
+const dblApi = require('./dblApi');
 
 const logChannelCommand = new SlashCommandBuilder()
   .setName('logchannel')
@@ -228,9 +229,26 @@ async function registerCommands(client) {
       await rest.put(Routes.applicationGuildCommands(client.user.id, guildId), { body: commands });
     }
     console.log(`[Commands] Registered ${commands.length} slash commands in ${guilds.size} guild(s)`);
+
+    // Sync commands to Discord Bot List profile (shard 0 only, to avoid duplicates)
+    const shardId = parseInt(process.env.SHARD_ID || '0', 10);
+    if (shardId === 0 && dblApi.isConfigured()) {
+      // The commands are already in JSON format via .map(c => c.toJSON()) above,
+      // but registerCommands uses the raw builders. We re-map here since `commands`
+      // in this scope refers to the SlashCommandBuilder instances, not JSON.
+      const commandJson = registerCommands._cachedJson || [];
+      if (commandJson.length > 0) {
+        await dblApi.syncCommands(client.user.id, commandJson).catch(err =>
+          console.warn('[Commands] DBL command sync failed:', err.message)
+        );
+      }
+    }
   } catch (err) {
     console.error('[Commands] Failed to register commands:', err.message);
   }
 }
+
+// Cache the JSON command definitions for DBL API sync (computed once at module load)
+registerCommands._cachedJson = commands.map(c => c.toJSON ? c.toJSON() : c);
 
 module.exports = { registerCommands };

@@ -276,20 +276,28 @@ function startAutoUpdate() {
       const fetchRes = await execAsync('git', ['fetch', 'origin', GITHUB_BRANCH], { timeout: 30000 });
       if (fetchRes.code !== 0) {
         console.error('[GitSync] ❌ Fetch failed:', fetchRes.stderr.substring(0, 150));
+        updating = false;
         return;
       }
 
       // Step 2: Compare local vs remote HEAD
       const localRes = await execAsync('git', ['rev-parse', 'HEAD'], { timeout: 10000 });
-      if (localRes.code !== 0) return;
+      if (localRes.code !== 0) {
+        updating = false;
+        return;
+      }
       const localHead = localRes.stdout;
 
       const remoteRes = await execAsync('git', ['rev-parse', `origin/${GITHUB_BRANCH}`], { timeout: 10000 });
-      if (remoteRes.code !== 0) return;
+      if (remoteRes.code !== 0) {
+        updating = false;
+        return;
+      }
       const remoteHead = remoteRes.stdout;
 
       if (!localHead || !remoteHead || localHead === remoteHead) {
-        return; // No new commits
+        updating = false; // No new commits — reset gate for next interval
+        return;
       }
 
       console.log(`[GitSync] 🔄 New commit: ${localHead.substring(0, 7)}... → ${remoteHead.substring(0, 7)}...`);
@@ -303,6 +311,7 @@ function startAutoUpdate() {
       if (pullRes.code !== 0) {
         console.error('[GitSync] ❌ Pull failed:', pullRes.stderr.substring(0, 200));
         await execAsync('git', ['stash', 'pop'], { timeout: 10000 });
+        updating = false;
         return;
       }
 
@@ -320,9 +329,8 @@ function startAutoUpdate() {
         console.log('[GitSync] ✅ Dependencies installed');
       }
 
-      // Step 6: Clean exit — Render will see exit code 0 and restart
-      // The SIGTERM handler in index.js handles client.destroy() cleanup
-      console.log('[GitSync] 🔄 Update complete — exiting for Render to restart...');
+      // Step 6: Clean exit — process manager will see exit and restart
+      console.log('[GitSync] 🔄 Update complete — exiting for restart...');
       // Don't reset updating — process exits via SIGTERM after 2s
       setTimeout(() => {
         process.kill(process.pid, 'SIGTERM');

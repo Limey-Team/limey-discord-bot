@@ -129,10 +129,21 @@ All notable changes to **Limey** — Discord Moderation, Logging & Management Bo
 
 ---
 
-## [Unreleased]
+## [1.2.0] — Bug Fixes & DBL API Integration
 
 ### New Features
 - Automatic GitHub Release creation when the bot version changes — reads changelog section and creates a release via the GitHub API
+- **Discord Bot List (DBL) API integration** — auto-posts guild/user counts every hour and syncs slash commands to your bot's profile on discordbotlist.com
+  - New environment variable: `DBL_API_TOKEN` — get yours at https://discordbotlist.com/
+  - Stats posted on startup and every hour thereafter
+  - Slash commands are synced to the bot's profile after registration
+  - Gracefully skips if `DBL_API_TOKEN` is not set (no impact on existing setups)
+
+### Bug Fixes
+- **Auto-update only checked once** — Fixed `updating` flag never resetting on early returns in `startAutoUpdate()`. When no new commits were found, the flag stayed `true` and blocked all future checks. Now resets properly using `finally` block, so polling continues every interval.
+- **Slash commands never registered** — Fixed event name from `'clientReady'` (which was never emitted) to `'ready'` in `shard-entry.js`. Also added an immediate fallback check (`client.isReady()`) in case the event already fired before the listener was attached. Previously, `registerCommands` was never called, meaning commands relied entirely on previous registrations persisting in Discord's API.
+- **Double announcement messages** — Fixed `announce.init()` broadcasting the update check to ALL shards, causing duplicate messages if multiple shards had the announcement channel cached. Now only shard 0 sends the announcement.
+- **Version bumped** to 1.2.0 reflecting all changes.
 
 ---
 
