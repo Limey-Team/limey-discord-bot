@@ -1,0 +1,28 @@
+[
+  {
+    "id": "subject",
+    "name": "Subject",
+    "description": "Briefly describe your issue",
+    "type": "short",
+    "required": true,
+    "placeholder": "Enter subject...",
+    "length": {
+      "enabled": true,
+      "min": 3,
+      "max": 100
+    }
+  },
+  {
+    "id": "description",
+    "name": "Description",
+    "description": "Provide more details about your request",
+    "type": "paragraph",
+    "required": true,
+    "placeholder": "Describe your issue in detail...",
+    "length": {
+      "enabled": true,
+      "min": 10,
+      "max": 2000
+    }
+  }
+]

@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Limey — Dashboard</title>
+  <link rel="stylesheet" href="/style.css">
+  <script>
+    // Register Service Worker for offline caching
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
+  </script>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="logo">
+      <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit">
+        <img src="/Limey.png" alt="Limey" style="width:32px;height:32px;object-fit:contain">
+        <span>Limey</span>
+      </a>
+    </div>
+
+    <nav class="nav">
+      <a href="/" class="nav-btn" style="text-decoration:none;margin-bottom:4px">
+        <span class="icon">←</span> Home
+      </a>
+      <button class="nav-btn active" data-tab="overview">
+        <span class="icon">🏠</span> Overview
+      </button>
+      <button class="nav-btn" data-tab="logs">
+        <span class="icon">📋</span> Logs
+      </button>
+      <button class="nav-btn" data-tab="tickets">
+        <span class="icon">🎫</span> Tickets
+      </button>
+      <button class="nav-btn" data-tab="ticket-config">
+        <span class="icon">🔧</span> Ticket Config
+      </button>
+      <button class="nav-btn" data-tab="modmail">
+        <span class="icon">📬</span> Modmail
+      </button>
+      <button class="nav-btn" data-tab="settings">
+        <span class="icon">⚙</span> Settings
+      </button>
+      <button class="nav-btn" data-tab="bots">
+        <span class="icon">🤖</span> Custom Bots
+      </button>
+      <button class="nav-btn" data-tab="backups">
+        <span class="icon">💾</span> Backups
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="connection-status" id="connectionStatus">
+        <span class="status-dot disconnected"></span>
+        <span>Disconnected</span>
+      </div>
+      <div class="git-sync-status" id="gitSyncStatus">
+        <div class="git-sync-row">
+          <span class="status-dot disconnected" id="gitSyncDot"></span>
+          <span id="gitSyncText">Git sync: checking…</span>
+        </div>
+        <div class="git-sync-row git-sync-last" id="gitSyncLast"></div>
+        <button class="git-sync-btn" id="gitSyncBtn" title="Force sync now">↻ Sync Now</button>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- Offline banner -->
+  <div class="offline-banner" id="offlineBanner" style="display:none">
+    <span class="offline-icon">📡</span>
+    <span class="offline-text">No internet connection — showing cached data</span>
+  </div>
+
+  <main class="main">
+    <!-- OVERVIEW TAB -->
+    <section class="tab-content active" id="tab-overview">
+      <header class="tab-header">
+        <h1>Overview</h1>
+      </header>
+
+      <div class="overview-content">
+        <div class="stats-grid" id="overviewStatsGrid">
+          <div class="stat-card">
+            <div class="stat-value" id="ovStatTotal">—</div>
+            <div class="stat-label">Total Logs</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="ovStatTypes">—</div>
+            <div class="stat-label">Event Types</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="ovStatTickets">—</div>
+            <div class="stat-label">Open Tickets</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="ovStatModmail">—</div>
+            <div class="stat-label">Modmail Threads</div>
+          </div>
+        </div>
+
+        <div class="overview-grid">
+          <div class="overview-card">
+            <h3>📋 Recent Activity</h3>
+            <div class="overview-recent" id="overviewRecent">
+              <div class="empty-state" style="padding:30px">
+                <div class="empty-icon">⚡</div>
+                <h3>Waiting for events…</h3>
+                <p>Recent bot activity will appear here.</p>
+              </div>
+            </div>
+          </div>
+          <div class="overview-card">
+            <h3>📊 Quick Stats</h3>
+            <div class="overview-quick-stats" id="overviewQuickStats">
+              <div class="quick-stat-row">
+                <span class="quick-stat-label">Connection</span>
+                <span class="quick-stat-value disconnected" id="quickConnStatus">—</span>
+              </div>
+              <div class="quick-stat-row">
+                <span class="quick-stat-label">Servers</span>
+                <span class="quick-stat-value" id="quickServerCount">—</span>
+              </div>
+              <div class="quick-stat-row">
+                <span class="quick-stat-label">Rate Limits</span>
+                <span class="quick-stat-value" id="quickRateLimits">—</span>
+              </div>
+              <div class="quick-stat-row">
+                <span class="quick-stat-label">Newest Log</span>
+                <span class="quick-stat-value" id="quickNewestLog">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LOGS TAB (with sub-tabs) -->
+    <section class="tab-content" id="tab-logs">
+      <header class="tab-header">
+        <h1>Logs</h1>
+        <div class="header-actions">
+          <button class="btn btn-danger" id="clearAllLogs">Clear all logs</button>
+        </div>
+      </header>
+
+      <div class="tab-subnav" id="logsSubnav">
+        <button class="subnav-btn active" data-subtab="logs-live">◎ Live Feed</button>
+        <button class="subnav-btn" data-subtab="logs-explore">≡ Explore</button>
+        <button class="subnav-btn" data-subtab="logs-stats">◈ Stats</button>
+      </div>
+
+      <!-- Logs: Live Feed -->
+      <div class="subtab-content active" id="subtab-logs-live">
+        <div class="live-filters">
+          <input type="text" id="liveFilterEvent" placeholder="Filter by event…" class="filter-input">
+          <input type="text" id="liveFilterSearch" placeholder="Search in data…" class="filter-input">
+          <label class="pause-toggle">
+            <input type="checkbox" id="pauseLive">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            Pause
+          </label>
+          <button class="btn btn-outline" id="clearLive">Clear feed</button>
+          <span class="badge" id="liveCount">0 logs</span>
+        </div>
+        <div class="log-list" id="liveLogs">
+          <div class="empty-state">
+            <div class="empty-icon">⚡</div>
+            <h3>Waiting for events…</h3>
+            <p>Events will appear here in real time as the bot detects them.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Logs: Explore -->
+      <div class="subtab-content" id="subtab-logs-explore">
+        <div class="filter-bar">
+          <select id="filterEvent" class="filter-input">
+            <option value="">All events</option>
+          </select>
+          <input type="text" id="filterGuild" placeholder="Guild…" class="filter-input">
+          <input type="text" id="filterChannel" placeholder="Channel…" class="filter-input">
+          <input type="text" id="filterUser" placeholder="User…" class="filter-input">
+          <input type="text" id="filterSearch" placeholder="Search data…" class="filter-input">
+          <button class="btn btn-primary" id="applyFilters">Search</button>
+        </div>
+        <div class="explore-results">
+          <div class="log-table-wrap">
+            <table class="log-table">
+              <thead>
+                <tr>
+                  <th class="col-id">ID</th>
+                  <th class="col-time">Time</th>
+                  <th class="col-event">Event</th>
+                  <th class="col-guild">Guild</th>
+                  <th class="col-channel">Channel</th>
+                  <th class="col-user">User</th>
+                  <th class="col-data">Data</th>
+                </tr>
+              </thead>
+              <tbody id="exploreBody"></tbody>
+            </table>
+            <div class="pagination" id="pagination"></div>
+          </div>
+          <div class="empty-state" id="exploreEmpty" style="display:none">
+            <div class="empty-icon">🔍</div>
+            <h3>No results</h3>
+            <p>Try adjusting your filters or wait for more events.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Logs: Stats -->
+      <div class="subtab-content" id="subtab-logs-stats">
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card">
+            <div class="stat-value" id="statTotal">—</div>
+            <div class="stat-label">Total Logs</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statTypes">—</div>
+            <div class="stat-label">Event Types</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statOldest">—</div>
+            <div class="stat-label">Oldest Log</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statNewest">—</div>
+            <div class="stat-label">Newest Log</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statRateLimits">—</div>
+            <div class="stat-label">Rate Limits Hit</div>
+          </div>
+        </div>
+        <div class="chart-container" id="rateLimitDetail" style="display:none">
+          <h2>Rate Limit Details</h2>
+          <div class="rate-limit-info" id="rateLimitInfo"></div>
+          <div class="rate-limit-table-wrap">
+            <table class="log-table">
+              <thead>
+                <tr>
+                  <th>Route</th>
+                  <th>Hit Count</th>
+                  <th>Rate Limit</th>
+                  <th>Last Hit</th>
+                </tr>
+              </thead>
+              <tbody id="rateLimitBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="chart-container">
+          <h2>Events by Type</h2>
+          <div class="bar-chart" id="eventChart"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SETTINGS TAB (now includes Log Config as sub-tab) -->
+    <section class="tab-content" id="tab-settings">
+      <header class="tab-header">
+        <h1>Settings</h1>
+      </header>
+
+      <div class="tab-subnav">
+        <button class="subnav-btn active" data-subtab="settings-channel">📡 Log Channel</button>
+        <button class="subnav-btn" data-subtab="settings-events">🔔 Event Config</button>
+      </div>
+
+      <!-- Settings: Log Channel -->
+      <div class="subtab-content active" id="subtab-settings-channel">
+        <div class="settings-content">
+          <p class="settings-desc">Configure which channel the bot sends log messages to for each server you own.</p>
+          <div class="settings-card">
+            <div class="settings-row">
+              <label for="settingsGuild">Server</label>
+              <select id="settingsGuild" class="filter-input">
+                <option value="">Select a server…</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <label for="settingsChannel">Log Channel</label>
+              <select id="settingsChannel" class="filter-input" disabled>
+                <option value="">Select a guild first…</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <label></label>
+              <div class="settings-actions">
+                <button class="btn btn-primary" id="saveSettings" disabled>Save</button>
+                <button class="btn btn-outline" id="disableSettings" disabled>Disable Logging</button>
+              </div>
+            </div>
+            <div class="settings-status" id="settingsStatus"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings: Event Config (formerly Log Config tab) -->
+      <div class="subtab-content" id="subtab-settings-events">
+        <div class="log-config-content">
+          <div class="log-config-header-row">
+            <select id="logConfigGuildFilter" class="filter-input">
+              <option value="">Select a server…</option>
+            </select>
+            <span class="badge" id="logConfigCount">0/0 enabled</span>
+          </div>
+          <p class="settings-desc">Control which Discord events are sent to your server's log channel. Disabling an event stops it from appearing in the log channel, but it will still be recorded and visible in the Logs tab.</p>
+          <div class="log-config-actions">
+            <button class="btn btn-primary" id="logConfigEnableAll">✅ Enable All</button>
+            <button class="btn btn-danger" id="logConfigDisableAll">❌ Disable All</button>
+            <span class="config-status" id="logConfigStatus"></span>
+          </div>
+          <div class="log-config-groups" id="logConfigGroups">
+            <div class="empty-state">
+              <div class="empty-icon">🔔</div>
+              <h3>Select a server</h3>
+              <p>Select a server above to configure which events are sent to its log channel.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- TICKETS TAB -->
+    <section class="tab-content" id="tab-tickets">
+      <header class="tab-header">
+        <h1>🎫 Tickets</h1>
+        <div class="header-actions">
+          <select id="ticketGuildFilter" class="filter-input">
+            <option value="">Select a server…</option>
+          </select>
+          <span class="badge" id="ticketCount">0 tickets</span>
+        </div>
+      </header>
+
+      <div class="ticket-stats-bar" id="ticketStatsBar">
+        <div class="ticket-stat">
+          <span class="ticket-stat-value" id="ticketStatTotal">0</span>
+          <span class="ticket-stat-label">Total</span>
+        </div>
+        <div class="ticket-stat">
+          <span class="ticket-stat-value" id="ticketStatOpen" style="color:var(--success)">0</span>
+          <span class="ticket-stat-label">Open</span>
+        </div>
+        <div class="ticket-stat">
+          <span class="ticket-stat-value" id="ticketStatClosed" style="color:var(--danger)">0</span>
+          <span class="ticket-stat-label">Closed</span>
+        </div>
+        <div class="ticket-stat">
+          <span class="ticket-stat-value" id="ticketStatClaimed" style="color:var(--accent)">0</span>
+          <span class="ticket-stat-label">Claimed</span>
+        </div>
+        <div class="ticket-stat">
+          <span class="ticket-stat-value" id="ticketStatPinned" style="color:var(--warning)">0</span>
+          <span class="ticket-stat-label">Pinned</span>
+        </div>
+      </div>
+
+      <div class="ticket-filters">
+        <select id="ticketStatusFilter" class="filter-input">
+          <option value="all">All tickets</option>
+          <option value="open">🟢 Open</option>
+          <option value="closed">🔴 Closed</option>
+          <option value="claimed">🙋 Claimed</option>
+          <option value="pinned">📌 Pinned</option>
+        </select>
+        <input type="text" id="ticketSearch" placeholder="Search by creator, channel ID…" class="filter-input">
+        <button class="btn btn-outline" id="ticketRefreshBtn">Refresh</button>
+      </div>
+
+      <div class="ticket-list" id="ticketList">
+        <div class="empty-state">
+          <div class="empty-icon">🎫</div>
+          <h3>No tickets yet</h3>
+          <p>Select a server above to view its tickets.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TICKET CONFIG TAB -->
+    <section class="tab-content" id="tab-ticket-config">
+      <header class="tab-header">
+        <h1>🔧 Ticket Configuration</h1>
+        <div class="header-actions">
+          <select id="ticketConfigGuildFilter" class="filter-input">
+            <option value="">Select a server…</option>
+          </select>
+        </div>
+      </header>
+
+      <div class="tab-subnav">
+        <button class="subnav-btn active" data-subtab="ticket-general">General</button>
+        <button class="subnav-btn" data-subtab="ticket-panels">Panels</button>
+        <button class="subnav-btn" data-subtab="ticket-options">Options</button>
+        <button class="subnav-btn" data-subtab="ticket-questions">Questions</button>
+        <button class="subnav-btn" data-subtab="ticket-priorities">Priorities</button>
+        <button class="subnav-btn" data-subtab="ticket-transcripts">Transcripts</button>
+        <button class="subnav-btn" data-subtab="ticket-spawn">📨 Spawn Panel</button>
+      </div>
+
+      <!-- General Config -->
+      <div class="subtab-content active" id="subtab-ticket-general">
+        <div class="ticket-config-section">
+          <p class="settings-desc">Configure general ticket system settings. This config is saved to <code>config/tickets/general.json</code>.</p>
+          <div class="config-editor">
+            <textarea id="generalConfigEditor" class="config-textarea" spellcheck="false"></textarea>
+            <div class="config-actions">
+              <button class="btn btn-primary" id="saveGeneralConfig">Save Configuration</button>
+              <span class="config-status" id="generalConfigStatus"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panels Config -->
+      <div class="subtab-content" id="subtab-ticket-panels">
+        <div class="ticket-config-section">
+          <p class="settings-desc">Configure ticket panels. This config is saved to <code>config/tickets/panels.json</code>.</p>
+          <div class="config-editor">
+            <textarea id="panelsConfigEditor" class="config-textarea" spellcheck="false"></textarea>
+            <div class="config-actions">
+              <button class="btn btn-primary" id="savePanelsConfig">Save Configuration</button>
+              <span class="config-status" id="panelsConfigStatus"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Options Config -->
+      <div class="subtab-content" id="subtab-ticket-options">
+        <div class="ticket-config-section">
+          <p class="settings-desc">Configure ticket options/buttons. This config is saved to <code>config/tickets/options.json</code>.</p>
+          <div class="config-editor">
+            <textarea id="optionsConfigEditor" class="config-textarea" spellcheck="false"></textarea>
+            <div class="config-actions">
+              <button class="btn btn-primary" id="saveOptionsConfig">Save Configuration</button>
+              <span class="config-status" id="optionsConfigStatus"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Questions Config -->
+      <div class="subtab-content" id="subtab-ticket-questions">
+        <div class="ticket-config-section">
+          <p class="settings-desc">Configure ticket modal questions. This config is saved to <code>config/tickets/questions.json</code>.</p>
+          <div class="config-editor">
+            <textarea id="questionsConfigEditor" class="config-textarea" spellcheck="false"></textarea>
+            <div class="config-actions">
+              <button class="btn btn-primary" id="saveQuestionsConfig">Save Configuration</button>
+              <span class="config-status" id="questionsConfigStatus"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Priorities -->
+      <div class="subtab-content" id="subtab-ticket-priorities">
+        <div class="ticket-config-section">
+          <p class="settings-desc">Available priority levels for tickets. These are read-only defaults.</p>
+          <div id="prioritiesDisplay" class="priorities-grid"></div>
+        </div>
+      </div>
+
+      <!-- Transcripts -->
+      <div class="subtab-content" id="subtab-ticket-transcripts">
+        <div class="ticket-config-section">
+          <p class="settings-desc">Saved ticket transcripts. You can view generated transcripts here.</p>
+          <div id="transcriptsList">
+            <div class="empty-state">
+              <div class="empty-icon">📄</div>
+              <h3>No transcripts yet</h3>
+              <p>Transcripts are generated when tickets are deleted.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Spawn Panel -->
+      <div class="subtab-content" id="subtab-ticket-spawn">
+        <div class="ticket-config-section">
+          <p class="settings-desc">Send a ticket panel to a channel in your server. Select a panel and a channel below, then click "Send Panel".</p>
+          <div class="settings-card" style="max-width:520px">
+            <div class="settings-row">
+              <label>Panel</label>
+              <select id="spawnPanelSelect" class="filter-input">
+                <option value="">Select a panel…</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <label>Channel</label>
+              <select id="spawnChannelSelect" class="filter-input" disabled>
+                <option value="">Select a server first…</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <label></label>
+              <div class="settings-actions">
+                <button class="btn btn-primary" id="spawnPanelBtn" disabled>📨 Send Panel</button>
+              </div>
+            </div>
+            <div class="settings-status" id="spawnPanelStatus"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CUSTOM BOTS TAB -->
+    <section class="tab-content" id="tab-bots">
+      <header class="tab-header">
+        <h1>🤖 Custom Bots</h1>
+        <div class="header-actions">
+          <button class="btn btn-primary" id="refreshBotsBtn">Refresh</button>
+        </div>
+      </header>
+
+      <div class="settings-content">
+        <p class="settings-desc">Add your own Discord bot token to run a custom instance alongside the main bot. Each custom bot runs in the same process and registers its own commands for its server.</p>
+
+        <!-- Add bot form -->
+        <div class="settings-card" style="max-width:520px;margin-bottom:20px">
+          <h3 style="margin-bottom:12px;font-size:15px;color:var(--text-secondary)">Add a Custom Bot</h3>
+          <div class="settings-row">
+            <label>Server</label>
+            <select id="botsGuildSelect" class="filter-input">
+              <option value="">Select a server…</option>
+            </select>
+          </div>
+          <div class="settings-row">
+            <label>Bot Token</label>
+            <input type="password" id="botsTokenInput" class="filter-input" placeholder="Paste your bot token here…" style="flex:1;font-family:monospace">
+          </div>
+          <div class="settings-row">
+            <label></label>
+            <div class="settings-actions">
+              <button class="btn btn-primary" id="startCustomBotBtn">▶ Start Bot</button>
+            </div>
+          </div>
+          <div class="settings-status" id="botsAddStatus"></div>
+        </div>
+
+        <!-- Running bots list -->
+        <h3 style="margin-bottom:12px;font-size:15px;color:var(--text-secondary)">Bot Instances</h3>
+        <div id="botsList">
+          <div class="empty-state" id="botsEmpty">
+            <div class="empty-icon">🤖</div>
+            <h3>No custom bots running</h3>
+            <p>Add a bot token above to get started.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODMAIL TAB -->
+    <section class="tab-content" id="tab-modmail">
+      <header class="tab-header">
+        <h1>📬 Modmail</h1>
+        <div class="header-actions">
+          <select id="modmailGuildFilter" class="filter-input">
+            <option value="">Select a server…</option>
+          </select>
+          <button class="btn btn-outline" id="modmailRefreshBtn">Refresh</button>
+        </div>
+      </header>
+
+      <div class="modmail-stats-bar" id="modmailStatsBar">
+        <div class="modmail-stat">
+          <span class="modmail-stat-value" id="modmailStatTotal">0</span>
+          <span class="modmail-stat-label">Total</span>
+        </div>
+        <div class="modmail-stat">
+          <span class="modmail-stat-value" id="modmailStatOpen" style="color:var(--success)">0</span>
+          <span class="modmail-stat-label">Open</span>
+        </div>
+        <div class="modmail-stat">
+          <span class="modmail-stat-value" id="modmailStatClosed" style="color:var(--danger)">0</span>
+          <span class="modmail-stat-label">Closed</span>
+        </div>
+        <div class="modmail-stat">
+          <span class="modmail-stat-value" id="modmailStatMessages" style="color:var(--accent)">0</span>
+          <span class="modmail-stat-label">Messages</span>
+        </div>
+        <div class="modmail-stat">
+          <span class="modmail-stat-value" id="modmailStatBlocked" style="color:var(--danger)">0</span>
+          <span class="modmail-stat-label">Blocked</span>
+        </div>
+      </div>
+
+      <div class="modmail-filters">
+        <select id="modmailStatusFilter" class="filter-input">
+          <option value="all">All threads</option>
+          <option value="open">🟢 Open</option>
+          <option value="closed">🔴 Closed</option>
+        </select>
+        <input type="text" id="modmailSearch" placeholder="Search by user tag, user ID…" class="filter-input">
+      </div>
+
+      <div class="modmail-list" id="modmailList">
+        <div class="empty-state">
+          <div class="empty-icon">📬</div>
+          <h3>No modmail threads yet</h3>
+          <p>Select a server above to view its modmail conversations.</p>
+        </div>
+      </div>
+
+      <!-- Modmail Config Section -->
+      <div class="modmail-config-section" id="modmailConfigSection" style="display:none">
+        <h2 style="margin:24px 0 12px;font-size:18px;color:var(--text-primary)">⚙️ Configuration</h2>
+        <div class="settings-card" style="max-width:100%">
+          <div class="settings-row">
+            <label>Status</label>
+            <span id="modmailConfigStatus">Disabled</span>
+          </div>
+          <div class="settings-row">
+            <label>Category</label>
+            <span id="modmailConfigCategory">Not set</span>
+          </div>
+          <div class="settings-row">
+            <label>Staff Roles</label>
+            <span id="modmailConfigStaffRoles">None</span>
+          </div>
+          <div class="settings-row">
+            <label>Log Channel</label>
+            <span id="modmailConfigLogChannel">Not set</span>
+          </div>
+          <div class="settings-row">
+            <label>Cooldown</label>
+            <span id="modmailConfigCooldown">60 min</span>
+          </div>
+          <div class="settings-row">
+            <label>Auto-Close</label>
+            <span id="modmailConfigAutoClose">24 hours</span>
+          </div>
+          <div class="settings-row">
+            <label>Blocked Users</label>
+            <span id="modmailConfigBlockedCount">0</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BACKUPS TAB -->
+    <section class="tab-content" id="tab-backups">
+      <header class="tab-header">
+        <h1>💾 Backups</h1>
+        <div class="header-actions">
+          <select id="backupGuildFilter" class="filter-input">
+            <option value="">Select a server…</option>
+          </select>
+          <button class="btn btn-primary" id="createBackupBtn">📀 Create Backup</button>
+          <button class="btn btn-outline" id="refreshBackupsBtn">Refresh</button>
+        </div>
+      </header>
+
+      <div class="settings-content">
+        <p class="settings-desc">Create and manage full data snapshots of your server's bot data — config, warnings, tickets, transcripts, and more. Backups are stored as snapshots and synced to GitHub for persistence.</p>
+
+        <div class="settings-card" style="max-width:520px;margin-bottom:20px">
+          <h3 style="margin-bottom:8px;font-size:15px;color:var(--text-secondary)">Create a New Backup</h3>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.5">Captures config.json, warnings.json, ticket configs, ticket data, transcripts, and custom bot metadata into a single snapshot.</p>
+          <div class="settings-row">
+            <label>Label</label>
+            <input type="text" id="backupLabelInput" class="filter-input" placeholder="e.g. Before event setup" style="flex:1">
+          </div>
+          <div class="settings-row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="backupRestoreUsers" class="filter-checkbox">
+              <span class="checkbox-custom"></span>
+              <span>Restore Users</span>
+            </label>
+            <span style="font-size:11px;color:var(--text-muted);flex:1">DM all members to authorize joining during restore</span>
+          </div>
+          <div class="settings-row">
+            <label></label>
+            <div class="settings-actions">
+              <button class="btn btn-primary" id="createBackupFormBtn">📀 Create Backup</button>
+            </div>
+          </div>
+          <div class="settings-status" id="backupCreateStatus"></div>
+        </div>
+
+        <h3 style="margin-bottom:12px;font-size:15px;color:var(--text-secondary)">Backup History</h3>
+        <div id="backupsList">
+          <div class="empty-state" id="backupsEmpty">
+            <div class="empty-icon">💾</div>
+            <h3>No backups yet</h3>
+            <p>Select a server and click "Create Backup" to get started.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Log detail modal -->
+  <dialog id="logModal">
+    <div class="modal-header">
+      <h2>Log Detail</h2>
+      <button class="modal-close" id="modalClose">&times;</button>
+    </div>
+    <pre class="modal-body" id="modalBody"></pre>
+    <div class="modal-footer">
+      <button class="btn btn-outline" id="modalCopy">Copy JSON</button>
+    </div>
+  </dialog>
+
+  <!-- Help / Tutorial button -->
+  <button class="help-fab" id="helpFab" title="Dashboard Guide" onclick="openTutorial()">?</button>
+
+  <!-- Tutorial modal -->
+  <dialog id="tutorialModal">
+    <div class="modal-header">
+      <h2>📖 Limey Dashboard Guide</h2>
+      <button class="modal-close" onclick="closeTutorial()">&times;</button>
+    </div>
+    <div class="tutorial-body" id="tutorialBody">
+      <div class="tutorial-sidebar">
+        <button class="tutorial-tab active" data-guide="about">🏠 About</button>
+        <button class="tutorial-tab" data-guide="live">◎ Live Feed</button>
+        <button class="tutorial-tab" data-guide="explore">≡ Explore Logs</button>
+        <button class="tutorial-tab" data-guide="stats">◈ Stats</button>
+        <button class="tutorial-tab" data-guide="log-config">🔔 Log Config</button>
+        <button class="tutorial-tab" data-guide="settings">⚙ Settings</button>
+        <div class="tutorial-section-label">Ticketing</div>
+        <button class="tutorial-tab" data-guide="tickets">🎫 Tickets</button>
+        <button class="tutorial-tab" data-guide="ticket-config">🔧 Ticket Config</button>
+        <div class="tutorial-section-label">Modmail</div>
+        <button class="tutorial-tab" data-guide="modmail">📬 Modmail</button>
+        <div class="tutorial-section-label">Administration</div>
+        <button class="tutorial-tab" data-guide="bots">🤖 Custom Bots</button>
+        <button class="tutorial-tab" data-guide="backups">💾 Backups</button>
+      </div>
+      <div class="tutorial-content">
+        <!-- About -->
+        <div class="tutorial-pane active" id="guide-about">
+          <h2>Welcome to the Limey Dashboard</h2>
+          <p class="tutorial-subtitle">Your bot management command center</p>
+
+          <div class="tutorial-card">
+            <p>This dashboard gives you full control over your <strong>Limey Discord bot</strong>. Monitor events in real time, search logs, configure settings, manage tickets, and run custom bot instances — all from one place.</p>
+          </div>
+
+          <div class="tutorial-tips">
+            <div class="tip-item">
+              <span class="tip-icon">⌨️</span>
+              <div>
+                <strong>Keyboard Shortcut</strong>
+                <p>Press <kbd>?</kbd> anywhere in the dashboard to open this guide.</p>
+              </div>
+            </div>
+            <div class="tip-item">
+              <span class="tip-icon">🎫</span>
+              <div>
+                <strong>Ticket System</strong>
+                <p>Manage tickets and configure panels, options, and questions visually.</p>
+              </div>
+            </div>
+            <div class="tip-item">
+              <span class="tip-icon">🤖</span>
+              <div>
+                <strong>Custom Bots</strong>
+                <p>Add your own bot tokens to run custom bots alongside Limey.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Feed -->
+        <div class="tutorial-pane" id="guide-live">
+          <h2>◎ Live Feed</h2>
+          <p class="tutorial-subtitle">Real-time event monitoring</p>
+
+          <div class="tutorial-card">
+            <p>The <strong>Live Feed</strong> displays bot events as they happen in real time via Server-Sent Events (SSE). Every action the bot detects — messages, bans, joins, voice activity — appears here instantly.</p>
+          </div>
+
+          <h3 class="tutorial-h3">What you can do</h3>
+          <ul class="tutorial-list">
+            <li><strong>Filter</strong> by event type or search within event data</li>
+            <li><strong>Pause</strong> the feed to freeze the current view without missing new events</li>
+            <li><strong>Click</strong> any entry to inspect its full JSON details</li>
+            <li><strong>Limit the server view</strong> using the guild selector if you manage multiple servers</li>
+          </ul>
+
+          <div class="tutorial-tip-box">
+            <strong>💡 Tip:</strong> The feed auto-scrolls as new events arrive. Use the pause toggle to examine a specific moment without interruption.
+          </div>
+        </div>
+
+        <!-- Explore Logs -->
+        <div class="tutorial-pane" id="guide-explore">
+          <h2>≡ Explore Logs</h2>
+          <p class="tutorial-subtitle">Search and analyze historical events</p>
+
+          <div class="tutorial-card">
+            <p>The <strong>Explore Logs</strong> tab lets you search through all recorded events with powerful filters. Paginated results make it easy to browse large volumes of data.</p>
+          </div>
+
+          <h3 class="tutorial-h3">How to use</h3>
+          <ul class="tutorial-list">
+            <li>Pick an <strong>event type</strong> from the dropdown to narrow results</li>
+            <li>Search by <strong>guild name, channel, or user</strong> in the text fields</li>
+            <li>Use the <strong>Search data</strong> field to find specific content within event payloads</li>
+            <li><strong>Click any row</strong> to open the full JSON detail view</li>
+            <li>Navigate pages with the <strong>← Prev / Next →</strong> controls</li>
+          </ul>
+
+          <div class="tutorial-tip-box">
+            <strong>💡 Tip:</strong> Press <kbd>Enter</kbd> in any filter field to trigger the search immediately.
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="tutorial-pane" id="guide-stats">
+          <h2>◈ Statistics</h2>
+          <p class="tutorial-subtitle">System metrics and event distribution</p>
+
+          <div class="tutorial-card">
+            <p>The <strong>Stats</strong> tab gives you a bird's-eye view of your bot's activity: total events logged, oldest/newest entries, rate limit hits, and a visual breakdown of events by type.</p>
+          </div>
+
+          <h3 class="tutorial-h3">Dashboard metrics</h3>
+          <ul class="tutorial-list">
+            <li><strong>Total Logs</strong> — count of every event ever recorded</li>
+            <li><strong>Event Types</strong> — how many distinct event categories exist</li>
+            <li><strong>Rate Limits</strong> — number of Discord API rate limits hit, with per-route breakdown</li>
+            <li><strong>Bar Chart</strong> — visual comparison of the top 20 event types by volume</li>
+          </ul>
+        </div>
+
+        <!-- Log Config -->
+        <div class="tutorial-pane" id="guide-log-config">
+          <h2>🔔 Log Event Configuration</h2>
+          <p class="tutorial-subtitle">Control which events are sent to your Discord log channel</p>
+
+          <div class="tutorial-card">
+            <p>The <strong>Log Config</strong> tab lets you fine-tune which Discord events get forwarded to your server's log channel. Each event type can be individually enabled or disabled.</p>
+          </div>
+
+          <h3 class="tutorial-h3">How to use</h3>
+          <ul class="tutorial-list">
+            <li>Select a <strong>server</strong> from the dropdown to see its current event configuration</li>
+            <li><strong>Toggle individual events</strong> using the switches next to each event name</li>
+            <li>Use <strong>Enable all / Disable all</strong> buttons on each group to toggle entire categories</li>
+            <li>Use the top <strong>Enable All / Disable All</strong> buttons to control <em>all</em> events at once</li>
+            <li>The badge in the header shows how many events are currently enabled</li>
+          </ul>
+
+          <div class="tutorial-tip-box">
+            <strong>💡 Tip:</strong> Disabling an event in the log config only stops it from being sent to your Discord log channel. All events are still recorded and visible in the Live Feed and Explore tabs.
+          </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="tutorial-pane" id="guide-settings">
+          <h2>⚙ Settings</h2>
+          <p class="tutorial-subtitle">Log channel configuration</p>
+
+          <div class="tutorial-card">
+            <p>The <strong>Settings</strong> tab lets you configure which Discord channel Limey sends event log messages to, giving your moderation team a live feed of bot activity right inside your server.</p>
+          </div>
+
+          <h3 class="tutorial-h3">How it works</h3>
+          <ol class="tutorial-list">
+            <li>Select a <strong>server</strong> from the dropdown</li>
+            <li>Choose a <strong>text channel</strong> for log messages</li>
+            <li>Click <strong>Save</strong> to apply — logs will start flowing immediately</li>
+            <li>Use <strong>Disable Logging</strong> to turn it off for that server</li>
+          </ol>
+        </div>
+
+        <!-- Tickets -->
+        <div class="tutorial-pane" id="guide-tickets">
+          <h2>🎫 Tickets</h2>
+          <p class="tutorial-subtitle">Monitor and manage support tickets</p>
+
+          <div class="tutorial-card">
+            <p>The <strong>Tickets</strong> tab displays all open and closed support tickets across your servers. See who created each ticket, who claimed it, its priority, and relevant timestamps.</p>
+          </div>
+
+          <h3 class="tutorial-h3">Features</h3>
+          <ul class="tutorial-list">
+            <li><strong>Live stats bar</strong> — totals, open, closed, claimed, and pinned counts</li>
+            <li><strong>Filter</strong> by status (All / Open / Closed / Claimed / Pinned)</li>
+            <li><strong>Search</strong> by creator ID, channel ID, or option type</li>
+            <li><strong>Color-coded cards</strong> — green border for open, red for closed, blue for claimed</li>
+          </ul>
+
+          <div class="tutorial-tip-box">
+            <strong>💡 Tip:</strong> Use the status filter dropdown to quickly find unclaimed open tickets that need attention.
+          </div>
+        </div>
+
+        <!-- Ticket Config -->
+        <div class="tutorial-pane" id="guide-ticket-config">
+          <h2>🔧 Ticket Configuration</h2>
+          <p class="tutorial-subtitle">Configure the entire ticket system</p>
+
+          <div class="tutorial-card">
+            <p>This is the <strong>control center</strong> for the ticket system. Everything from panel definitions to modal questions to priority levels can be edited here. All changes are saved to files and auto-committed to GitHub.</p>
+          </div>
+
+          <h3 class="tutorial-h3">Sub-tab guide</h3>
+          <ul class="tutorial-list">
+            <li><strong>General</strong> — Core settings: permissions, category IDs, cooldowns, limits</li>
+            <li><strong>Panels</strong> — Define the embed messages and buttons users click to create tickets</li>
+            <li><strong>Options</strong> — Configure ticket types (support, report, application, etc.)</li>
+            <li><strong>Questions</strong> — Modal questions shown before a ticket is created</li>
+            <li><strong>Priorities</strong> — View available priority levels (Low / Medium / High / Urgent)</li>
+            <li><strong>Transcripts</strong> — Browse saved ticket transcripts from closed/deleted tickets</li>
+            <li><strong>Spawn Panel</strong> — Send a panel to any text channel without typing commands</li>
+          </ul>
+
+          <div class="tutorial-tip-box">
+            <strong>💡 Tip:</strong> Use the <strong>Spawn Panel</strong> sub-tab to send a ticket panel to any channel — no need to run <code>/ticket-panel</code> in Discord!
+          </div>
+        </div>
+
+        <!-- Modmail -->
+        <div class="tutorial-pane" id="guide-modmail">
+          <h2>📬 Modmail</h2>
+          <p class="tutorial-subtitle">Private messaging between users and staff</p>
+
+          <div class="tutorial-card">
+            <p>The <strong>Modmail</strong> system allows users to privately message server staff by DMing the bot. Each conversation gets its own private channel in a designated category where staff can respond. Replies are forwarded back to the user via DM — creating a seamless two-way private conversation.</p>
+          </div>
+
+          <h3 class="tutorial-h3">How it works</h3>
+          <ol class="tutorial-list">
+            <li>Admin runs <code>/modmail setup enable</code> — selects a category, staff role, and optional log channel</li>
+            <li>Users DM the bot — a private channel is created in the modmail category</li>
+            <li>Staff see the message and reply directly in the channel</li>
+            <li>The bot forwards replies back to the user anonymously or with staff name</li>
+            <li>Staff can close the thread with <code>/modmail close</code> or click the Close button</li>
+          </ol>
+
+          <h3 class="tutorial-h3">Key Features</h3>
+          <ul class="tutorial-list">
+            <li><strong>Anonymous replies</strong> — toggle per-thread so staff names stay hidden from users</li>
+            <li><strong>Auto-close</strong> — threads close automatically after configurable hours of inactivity</li>
+            <li><strong>Cooldown</strong> — prevent users from spamming new threads after one is closed</li>
+            <li><strong>Block/Unblock</strong> — block specific users from using modmail entirely</li>
+            <li><strong>Transcripts</strong> — generate a .txt transcript of any thread with <code>/modmail transcript</code></li>
+            <li><strong>Staff alerts</strong> — pings a role and sends notifications to a log channel when new modmail arrives</li>
+            <li><strong>Custom greeting</strong> — customize the embed title, description, and color shown in new threads</li>
+            <li><strong>Auto-reply</strong> — send an automatic acknowledgment when users first DM the bot</li>
+          </ul>
+
+          <h3 class="tutorial-h3">Available Commands</h3>
+          <ul class="tutorial-list">
+            <li><strong>Setup:</strong> <code>/modmail setup enable</code>, <code>/modmail setup disable</code>, <code>/modmail setup category</code>, <code>/modmail setup staffrole</code>, <code>/modmail setup logchannel</code>, <code>/modmail setup alertrole</code>, <code>/modmail setup cooldown</code>, <code>/modmail setup autoclose</code>, <code>/modmail setup greeting</code>, <code>/modmail setup autoreply</code>, <code>/modmail setup view</code></li>
+            <li><strong>Actions:</strong> <code>/modmail close</code>, <code>/modmail reopen</code>, <code>/modmail anon</code>, <code>/modmail block</code>, <code>/modmail unblock</code>, <code>/modmail blocked</code>, <code>/modmail transcript</code>, <code>/modmail stats</code></li>
+          </ul>
+
+          <div class="tutorial-tip-box">
+            <strong>💡 Tip:</strong> Use the <strong>Close</strong>, <strong>Anonymous</strong>, and <strong>Block User</strong> buttons at the top of every modmail staff channel for quick actions without typing commands.
+          </div>
+        </div>
+
+        <!-- Custom Bots -->
+        <div class="tutorial-pane" id="guide-bots">
+          <h2>🤖 Custom Bots</h2>
+          <p class="tutorial-subtitle">Run your own bot instances alongside Limey</p>
+
+          <div class="tutorial-card">
+            <p>The <strong>Custom Bots</strong> tab allows server owners to add their own Discord bot tokens. Each bot runs in the same process, registers its own slash commands, and operates independently for its assigned server.</p>
+          </div>
+
+          <h3 class="tutorial-h3">How to add a bot</h3>
+          <ol class="tutorial-list">
+            <li>Go to the <a href="https://discord.com/developers/applications" target="_blank" rel="noopener">Discord Developer Portal</a> and create or select an application</li>
+            <li>Go to the <strong>Bot</strong> page and click <strong>Reset Token</strong> to reveal your token</li>
+            <li>Select your <strong>server</strong> from the dropdown</li>
+            <li>Paste the token and click <strong>Start Bot</strong></li>
+          </ol>
+
+          <h3 class="tutorial-h3">Important notes</h3>
+          <ul class="tutorial-list">
+            <li>Tokens are <strong>never stored on disk</strong> — they kept in memory only</li>
+            <li>On server restart, bots started from the dashboard <strong>won't auto-restart</strong></li>
+<li>For restart persistence, set <code>BOT_TOKEN_GUILDID</code> as an environment variable
+          </ul>            <div class="tutorial-tip-box">
+          </div>
+        </div>
+
+        <!-- Backups -->
+        <div class="tutorial-pane" id="guide-backups">
+          <h2>💾 Backups</h2>
+          <p class="tutorial-subtitle">Full data snapshot & restore system</p>
+
+          <div class="tutorial-card">
+            <p>The <strong>Backups</strong> system creates complete snapshots of all bot data — config, warnings, ticket configurations, ticket data, transcripts, and custom bot metadata. Each backup is stored as a full copy so you can restore to any point in time.</p>
+          </div>
+
+          <h3 class="tutorial-h3">What gets backed up</h3>
+          <ul class="tutorial-list">
+            <li><strong>config.json</strong> — All guild settings (log channels, verify roles, trap configs)</li>
+            <li><strong>warnings.json</strong> — All warning records for every user</li>
+            <li><strong>Ticket configs</strong> — General, panels, options, questions, transcripts settings</li>
+            <li><strong>Ticket data</strong> — All open/closed tickets, transcripts, and stats</li>
+            <li><strong>Bot metadata</strong> — Custom bot registrations (tokens are <em>not</em> stored)</li>
+          </ul>
+
+          <h3 class="tutorial-h3">How to use</h3>
+          <ul class="tutorial-list">
+            <li><strong>Create a backup</strong> via <code>/backup [label]</code> or click "Create Backup" in the dashboard</li>
+            <li><strong>View backups</strong> with <code>/backups</code> or in the Backups dashboard tab</li>
+            <li><strong>Restore</strong> with <code>/restore id:&lt;id&gt; confirm:true</code> — requires double confirmation</li>
+            <li><strong>Delete</strong> old backups from the dashboard to save space</li>
+          </ul>
+
+          <div class="tutorial-tip-box">
+            <strong>💡 Tip:</strong> Create a backup before making major configuration changes (e.g., before reconfiguring tickets or clearing warnings). This way you can always roll back if something goes wrong.
+          </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="/dashboard.js"></script>
+</body>
+</html>

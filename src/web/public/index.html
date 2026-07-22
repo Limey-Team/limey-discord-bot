@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Limey — Smart Discord Moderation Bot</title>
+  <style>
+    /* ========== Homepage-specific styles ========== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary:    #0d0e12;
+      --bg-secondary:  #141517;
+      --bg-tertiary:   #1a1b20;
+      --bg-card:       #1e1f26;
+      --text-primary:  #e4e5e7;
+      --text-secondary:#a6a7ab;
+      --text-muted:    #6b6c70;
+      --accent:        #5865F2;
+      --accent-hover:  #4752c4;
+      --success:       #57F287;
+      --warning:       #FEE75C;
+      --danger:        #ED4245;
+      --border:        #2e2f34;
+      --radius:        12px;
+      --radius-sm:     8px;
+      --shadow:        0 4px 24px rgba(0,0,0,0.4);
+      --transition:    200ms ease;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ========== Navbar ========== */
+    .navbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 32px;
+      background: rgba(13, 14, 18, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(46, 47, 52, 0.5);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+      font-weight: 700;
+      text-decoration: none;
+      color: var(--text-primary);
+    }
+
+    .nav-brand .brand-text {
+      background: linear-gradient(135deg, var(--accent), var(--success));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-link {
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color var(--transition), background var(--transition);
+    }
+
+    .nav-link:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 22px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(88, 101, 242, 0.35);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+    .btn-outline:hover {
+      background: rgba(255,255,255,0.05);
+      color: var(--text-primary);
+    }
+
+    .btn-lg {
+      padding: 14px 32px;
+      font-size: 16px;
+      border-radius: var(--radius);
+    }
+
+    /* ========== Hero ========== */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+      overflow: hidden;
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .hero-glow {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.15;
+    }
+
+    .hero-glow.g1 {
+      width: 600px; height: 600px;
+      background: var(--accent);
+      top: -200px; left: -100px;
+      animation: float1 12s ease-in-out infinite;
+    }
+
+    .hero-glow.g2 {
+      width: 500px; height: 500px;
+      background: var(--success);
+      bottom: -150px; right: -100px;
+      animation: float2 15s ease-in-out infinite;
+    }
+
+    .hero-glow.g3 {
+      width: 300px; height: 300px;
+      background: var(--warning);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      animation: float3 18s ease-in-out infinite;
+    }
+
+    @keyframes float1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(80px, 40px) scale(1.1); }
+      66% { transform: translate(-30px, -20px) scale(0.9); }
+    }
+
+    @keyframes float2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(-60px, -30px) scale(1.15); }
+      66% { transform: translate(40px, 20px) scale(0.85); }
+    }
+
+    @keyframes float3 {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); }
+      50% { transform: translate(-50%, -50%) scale(1.3); }
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 720px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: rgba(88, 101, 242, 0.12);
+      border: 1px solid rgba(88, 101, 242, 0.25);
+      border-radius: 24px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--accent);
+      margin-bottom: 28px;
+    }
+
+    .hero-badge .dot {
+      width: 8px; height: 8px;
+      background: var(--success);
+      border-radius: 50%;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.6); }
+    }
+
+    .hero h1 {
+      font-size: clamp(36px, 6vw, 64px);
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 20px;
+      letter-spacing: -0.02em;
+    }
+
+    .hero h1 .grad {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--success) 60%, var(--warning) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 18px;
+      color: var(--text-secondary);
+      max-width: 540px;
+      margin: 0 auto 36px;
+      line-height: 1.7;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 40px;
+      margin-top: 56px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .hero-stat {
+      text-align: center;
+    }
+
+    .hero-stat .stat-num {
+      font-size: 28px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-stat .stat-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    /* ========== Features ========== */
+    .section {
+      padding: 100px 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .section-header h2 {
+      font-size: clamp(28px, 4vw, 40px);
+      font-weight: 800;
+      margin-bottom: 12px;
+      letter-spacing: -0.01em;
+    }
+
+    .section-header p {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
+    }
+
+    .feature-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 32px rgba(88, 101, 242, 0.12);
+    }
+
+    .feature-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      font-size: 22px;
+      margin-bottom: 16px;
+    }
+
+    .fi-log   { background: rgba(88, 101, 242, 0.15); }
+    .fi-trap  { background: rgba(254, 231, 92, 0.15); }
+    .fi-mod   { background: rgba(237, 66, 69, 0.15); }
+    .fi-verify{ background: rgba(87, 242, 135, 0.15); }
+    .fi-dash  { background: rgba(235, 69, 158, 0.15); }
+    .fi-alert { background: rgba(138, 79, 255, 0.15); }
+    .fi-mail  { background: rgba(0, 200, 200, 0.15); }
+
+    .feature-card h3 {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* ========== CTA ========== */
+    .cta-section {
+      text-align: center;
+      padding: 100px 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 60px 40px;
+      max-width: 600px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 2;
+    }
+
+    .cta-card h2 {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .cta-card p {
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+    }
+
+    .cta-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* ========== Footer ========== */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 20px;
+    }
+
+    .footer a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color var(--transition);
+    }
+
+    .footer a:hover { color: var(--accent); }
+
+    /* ========== Responsive ========== */
+    @media (max-width: 768px) {
+      .navbar { padding: 12px 16px; }
+      .nav-links { gap: 4px; }
+      .nav-link { padding: 6px 12px; font-size: 13px; }
+      .hero { padding: 100px 16px 60px; }
+      .hero-stats { gap: 24px; }
+      .hero-stat .stat-num { font-size: 22px; }
+      .section { padding: 60px 16px; }
+      .cta-card { padding: 40px 24px; }
+      .footer { flex-direction: column; text-align: center; }
+      .footer-links { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="/" class="nav-brand">
+      <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="14" stroke="#5865F2" stroke-width="2.5" fill="none"/>
+        <path d="M10 20 L16 8 L22 20" stroke="#57F287" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </svg>
+      <span class="brand-text">Limey</span>
+    </a>
+    <div class="nav-links">
+      <a href="#features" class="nav-link">Features</a>
+      <a href="https://raw.githubusercontent.com/lemonlimeyfruit/limey/refs/heads/main/discord.user.js" class="nav-link">Add Limey</a>
+      <a href="/dashboard" class="btn btn-outline">Dashboard</a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-bg">
+      <div class="hero-glow g1"></div>
+      <div class="hero-glow g2"></div>
+      <div class="hero-glow g3"></div>
+    </div>
+
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="dot"></span>
+        Trusted by Discord communities
+      </div>
+
+      <h1>
+        Keep your server<br>
+        <span class="grad">safe & organized</span>
+      </h1>
+
+      <p>
+        Limey is an all-in-one Discord moderation bot with real-time logging,
+        a smart honeypot trap, verification system, and a powerful web dashboard.
+      </p>
+
+      <div class="hero-actions">
+        <a href="{{INVITE_URL}}" class="btn btn-primary btn-lg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+          </svg>
+          Add to Discord
+        </a>
+        <a href="/dashboard" class="btn btn-outline btn-lg">Open Dashboard</a>
+      </div>
+
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="stat-num">60+</div>
+          <div class="stat-label">Event Types Tracked</div>
+        </div>
+        <div class="hero-stat">
+          <div class="stat-num">Real‑time</div>
+          <div class="stat-label">Live Logging</div>
+        </div>
+        <div class="hero-stat">
+          <div class="stat-num">100%</div>
+          <div class="stat-label">Free & Open Source</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section" id="features">
+    <div class="section-header">
+      <h2>Everything you need to<br>manage your server</h2>
+      <p>Powerful tools designed for moderators who want full visibility and control.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon fi-log">📋</div>
+        <h3>Comprehensive Logging</h3>
+        <p>Track 60+ Discord events in real time — messages, voice, members, roles, channels, and more. Never miss a thing.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon fi-trap">🪤</div>
+        <h3>Limey Honeypot Trap</h3>
+        <p>Set up trap channels that auto-ban anyone who posts in them. Includes chaos mode to randomize channel names and a daily warmer.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon fi-mod">🛡️</div>
+        <h3>Moderation Commands</h3>
+        <p>Ban, kick, timeout, warn, purge, lock channels, and set slowmode — all with slash commands and DM notifications to affected users.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon fi-verify">✅</div>
+        <h3>One-Click Verification</h3>
+        <p>Let users verify themselves with a single button click. Fully customizable with embed panels and configurable roles.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon fi-dash">📊</div>
+        <h3>Web Dashboard</h3>
+        <p>A beautiful, real-time dashboard to search, filter, and explore logs. View statistics, configure settings, and manage your servers.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon fi-alert">🔔</div>
+        <h3>DM Notifications</h3>
+        <p>Users receive direct messages when they're warned, timed out, kicked, or banned — keeping everyone informed.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon fi-mail">📬</div>
+        <h3>Modmail System</h3>
+        <p>Let users DM the bot to privately contact staff. Each conversation creates a dedicated staff channel with anonymous replies, blocking, transcripts, and auto-close.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="cta-card">
+      <h2>Ready to level up your server?</h2>
+      <p>Add Limey to your Discord server and start monitoring events in seconds. It's completely free.</p>
+      <div class="cta-actions">
+        <a href="{{INVITE_URL}}" class="btn btn-primary btn-lg">
+          Add to Discord
+        </a>
+        <a href="/dashboard" class="btn btn-outline btn-lg">Go to Dashboard</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span>© 2026 Limey. Free & open source.</span>
+    <div class="footer-links">
+      <a href="#features">Features</a>
+      <a href="/dashboard">Dashboard</a>
+      <a href="{{INVITE_URL}}">Add Bot</a>
+    </div>
+  </footer>
+
+</body>
+</html>

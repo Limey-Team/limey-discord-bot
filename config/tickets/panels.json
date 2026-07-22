@@ -1,0 +1,24 @@
+[
+  {
+    "id": "support",
+    "name": "Support Panel",
+    "dropdown": false,
+    "options": [
+      "support-ticket"
+    ],
+    "text": "",
+    "embed": {
+      "enabled": true,
+      "title": "Support Tickets",
+      "description": "Create a ticket by clicking the button below. Our support team will assist you as soon as possible.",
+      "color": "#5865F2",
+      "footer": "Limey Server",
+      "timestamp": false
+    },
+    "settings": {
+      "dropdownPlaceholder": "Create a ticket...",
+      "maximumButtonsPerRow": 5,
+      "describeOptionsLayout": "normal"
+    }
+  }
+]

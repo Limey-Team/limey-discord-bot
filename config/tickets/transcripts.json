@@ -1,0 +1,24 @@
+{
+  "general": {
+    "enabled": false,
+    "enableChannel": false,
+    "enableCreatorDM": false,
+    "channel": "",
+    "mode": "html"
+  },
+  "embedSettings": {
+    "color": "#5865F2",
+    "listAllParticipants": false,
+    "includeTicketStats": false
+  },
+  "textTranscriptStyle": {
+    "layout": "normal",
+    "includeStats": true,
+    "includeIds": false,
+    "includeEmbeds": true,
+    "includeFiles": true,
+    "includeBotMessages": true,
+    "fileMode": "custom",
+    "customFileName": "transcript"
+  }
+}

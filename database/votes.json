@@ -1,0 +1,20 @@
+[
+  {
+    "userId": "12345",
+    "source": "top.gg",
+    "isWeekend": false,
+    "timestamp": 1784331485509
+  },
+  {
+    "userId": "12345",
+    "source": "discordbotlist.com",
+    "isWeekend": true,
+    "timestamp": 1784331485509
+  },
+  {
+    "userId": "67890",
+    "source": "top.gg",
+    "isWeekend": false,
+    "timestamp": 1784331485510
+  }
+]

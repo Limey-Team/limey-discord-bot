@@ -1,0 +1,132 @@
+{
+  "_CONFIG_VERSION": "limey-tickets-v1.0.0",
+  "mainColor": "#5865F2",
+  "serverId": "1527208356819894283",
+  "globalAdmins": [
+    "1503962881794899989"
+  ],
+  "logs": {
+    "enabled": true,
+    "channel": "1527208360896892976",
+    "logMessages": {
+      "creation": {
+        "dm": true,
+        "logs": true
+      },
+      "closing": {
+        "dm": true,
+        "logs": true
+      },
+      "deleting": {
+        "dm": true,
+        "logs": true
+      },
+      "reopening": {
+        "dm": true,
+        "logs": true
+      },
+      "claiming": {
+        "dm": true,
+        "logs": true
+      },
+      "pinning": {
+        "dm": true,
+        "logs": true
+      },
+      "adding": {
+        "dm": true,
+        "logs": true
+      },
+      "removing": {
+        "dm": true,
+        "logs": true
+      },
+      "renaming": {
+        "dm": true,
+        "logs": true
+      },
+      "moving": {
+        "dm": true,
+        "logs": true
+      },
+      "blacklisting": {
+        "dm": true,
+        "logs": true
+      },
+      "transferring": {
+        "dm": true,
+        "logs": true
+      },
+      "topicChange": {
+        "dm": true,
+        "logs": true
+      },
+      "priorityChange": {
+        "dm": true,
+        "logs": true
+      },
+      "reactionRole": {
+        "dm": true,
+        "logs": true
+      }
+    }
+  },
+  "ticketSystem": {
+    "useRedErrorEmbeds": true,
+    "emojiStyle": "before",
+    "pinEmoji": "📌",
+    "closeEmoji": "🔒",
+    "replyOnTicketCreation": true,
+    "askPriorityOnTicketCreation": true,
+    "removeParticipantsOnClose": false,
+    "pinFirstTicketMessage": true,
+    "limits": {
+      "enabled": true,
+      "globalMaximum": 50,
+      "userMaximum": 3
+    },
+    "channelTopic": {
+      "showOptionName": true,
+      "showOptionDescription": false,
+      "showOptionTopic": true,
+      "showPriority": false,
+      "showClosed": true,
+      "showClaimed": false,
+      "showPinned": false,
+      "showCreator": false,
+      "showParticipants": false
+    },
+    "closedCategory": {
+      "enabled": false,
+      "categoryId": ""
+    },
+    "backupCategory": {
+      "enabled": false,
+      "categoryId": ""
+    }
+  },
+  "permissions": {
+    "help": "everyone",
+    "panel": "admin",
+    "close": "everyone",
+    "delete": "admin",
+    "reopen": "everyone",
+    "claim": "admin",
+    "unclaim": "admin",
+    "pin": "admin",
+    "unpin": "admin",
+    "move": "admin",
+    "rename": "admin",
+    "add": "admin",
+    "remove": "admin",
+    "blacklist": "admin",
+    "stats": "everyone",
+    "clear": "admin",
+    "autoclose": "admin",
+    "autodelete": "admin",
+    "transfer": "admin",
+    "topic": "admin",
+    "priority": "admin",
+    "transcripts": "admin"
+  }
+}

@@ -1,0 +1,72 @@
+[
+  {
+    "id": "support-ticket",
+    "name": "Support",
+    "description": "Create a ticket for general support questions.",
+    "type": "ticket",
+    "button": {
+      "emoji": "🎫",
+      "label": "Create Ticket",
+      "color": "blue"
+    },
+    "questions": [],
+    "ticketAdmins": [],
+    "readonlyAdmins": [],
+    "allowCreationByBlacklistedUsers": false,
+    "channel": {
+      "prefix": "support-",
+      "suffix": "user-name",
+      "category": "",
+      "topic": "Support Ticket"
+    },
+    "dmMessage": {
+      "enabled": false,
+      "text": "",
+      "embed": {
+        "enabled": false,
+        "title": "Support Ticket Created",
+        "description": "Thank you for creating a support ticket."
+      }
+    },
+    "ticketMessage": {
+      "enabled": true,
+      "text": "",
+      "embed": {
+        "enabled": true,
+        "title": "Support Ticket",
+        "description": "Thank you for creating a ticket. Our support team will be with you shortly.\n\nPlease describe your issue in detail.",
+        "color": "#5865F2"
+      },
+      "ping": {
+        "@here": false,
+        "@everyone": false,
+        "custom": []
+      }
+    },
+    "autoclose": {
+      "enableInactiveHours": false,
+      "inactiveHours": 24,
+      "enableUserLeave": false,
+      "disableOnClaim": false
+    },
+    "autodelete": {
+      "enableInactiveDays": false,
+      "inactiveDays": 7,
+      "enableUserLeave": false,
+      "disableOnClaim": false
+    },
+    "cooldown": {
+      "enabled": false,
+      "cooldownMinutes": 10
+    },
+    "limits": {
+      "enabled": false,
+      "globalMaximum": 20,
+      "userMaximum": 3
+    },
+    "slowMode": {
+      "enabled": false,
+      "slowModeSeconds": 5
+    }
+  }
+]

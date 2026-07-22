@@ -1,0 +1,20 @@
+[
+  {
+    "id": "1529011526097436722_1784615176652",
+    "channelId": "1529011526097436722",
+    "optionId": "support-ticket",
+    "creatorId": "1503962881794899989",
+    "createdAt": 1784615155590,
+    "closedAt": 1784615164447,
+    "closedBy": "1503962881794899989",
+    "claimedBy": "1503962881794899989",
+    "messageCount": 3,
+    "participants": [
+      {
+        "type": "role",
+        "id": "1503962881794899989"
+      }
+    ],
+    "generatedAt": 1784615176652
+  }
+]
