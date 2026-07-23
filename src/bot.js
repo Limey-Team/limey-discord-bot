@@ -144,8 +144,14 @@ async function sendPunishmentDM(user, guildName, action, reason, extra) {
  * Send an image captcha challenge to the user
  * Step 1: Show captcha image + "Enter Captcha" button
  * Step 2: User clicks button → show modal to type the text
+ *
+ * NOTE: Defer the reply FIRST to avoid Discord's 3-second interaction timeout
+ * while generating the captcha image (Jimp image processing can be slow).
  */
 async function sendCaptchaChallenge(interaction, method) {
+  // Defer immediately to prevent "This interaction failed" timeout
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
   const text = captchaGen.generateCaptchaText();
 
   let imageBuffer;
@@ -153,9 +159,8 @@ async function sendCaptchaChallenge(interaction, method) {
     imageBuffer = await captchaGen.generateCaptchaImage(text);
   } catch (err) {
     console.error('[Captcha] Image generation failed:', err.message);
-    return interaction.reply({
+    return interaction.editReply({
       content: '❌ Failed to generate captcha image. Please try again later.',
-      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -195,11 +200,10 @@ async function sendCaptchaChallenge(interaction, method) {
         .setStyle(ButtonStyle.Primary)
     );
 
-  await interaction.reply({
+  await interaction.editReply({
     embeds: [embed],
     components: [row],
     files: [attachment],
-    flags: MessageFlags.Ephemeral,
   });
 }
 
@@ -435,61 +439,63 @@ function setupBot(client) {
 
   // --- Handle interactions (slash commands + buttons) ---
   client.on('interactionCreate', async (interaction) => {
-    // --- Verify button (show captcha modal) ---
+    // --- Handle all button interactions ---
     if (interaction.isButton()) {
-      if (!interaction.customId.startsWith('verify_')) return;
-      const guildId = interaction.customId.replace('verify_', '');
-      if (guildId !== interaction.guild.id) return;
+      // --- Verify button (show captcha modal) ---
+      if (interaction.customId.startsWith('verify_')) {
+        const guildId = interaction.customId.replace('verify_', '');
+        if (guildId !== interaction.guild.id) return;
 
-      const roleId = store.getVerifyRole(interaction.guild.id);
-      if (!roleId) {
-        return interaction.reply({ content: '❌ Verification is not set up on this server.', flags: MessageFlags.Ephemeral });
+        const roleId = store.getVerifyRole(interaction.guild.id);
+        if (!roleId) {
+          return interaction.reply({ content: '❌ Verification is not set up on this server.', flags: MessageFlags.Ephemeral });
+        }
+
+        const role = interaction.guild.roles.cache.get(roleId);
+        if (!role) {
+          return interaction.reply({ content: '❌ The verified role no longer exists. Ask an admin to reconfigure verification.', flags: MessageFlags.Ephemeral });
+        }
+
+        if (interaction.member.roles.cache.has(roleId)) {
+          return interaction.reply({ content: '✅ You are already verified!', flags: MessageFlags.Ephemeral });
+        }
+
+        return sendCaptchaChallenge(interaction, 'button');
       }
 
-      const role = interaction.guild.roles.cache.get(roleId);
-      if (!role) {
-        return interaction.reply({ content: '❌ The verified role no longer exists. Ask an admin to reconfigure verification.', flags: MessageFlags.Ephemeral });
+      // --- Enter Captcha button (shows modal with text input) ---
+      if (interaction.customId.startsWith('enter_captcha_')) {
+        const userId = interaction.customId.replace('enter_captcha_', '');
+        if (userId !== interaction.user.id) {
+          return interaction.reply({ content: '❌ This captcha challenge is not for you.', flags: MessageFlags.Ephemeral });
+        }
+
+        const challenge = pendingCaptchas.get(interaction.user.id);
+        if (!challenge) {
+          return interaction.reply({
+            content: '❌ Your verification session has expired. Please click **Verify** again.',
+            flags: MessageFlags.Ephemeral,
+          });
+        }
+
+        const modal = new ModalBuilder()
+          .setCustomId('captcha_' + interaction.user.id)
+          .setTitle('🔐 Verification Challenge');
+
+        const questionInput = new TextInputBuilder()
+          .setCustomId('captcha_answer')
+          .setLabel('Type the characters from the image')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setPlaceholder('e.g. A3B7K9')
+          .setMinLength(captchaGen.CAPTCHA_LENGTH || 6)
+          .setMaxLength(12);
+
+        const row = new ActionRowBuilder().addComponents(questionInput);
+        modal.addComponents(row);
+
+        return interaction.showModal(modal);
       }
-
-      if (interaction.member.roles.cache.has(roleId)) {
-        return interaction.reply({ content: '✅ You are already verified!', flags: MessageFlags.Ephemeral });
-      }
-
-      return sendCaptchaChallenge(interaction, 'button');
-    }
-
-    // --- Enter Captcha button (shows modal with text input) ---
-    if (interaction.isButton() && interaction.customId.startsWith('enter_captcha_')) {
-      const userId = interaction.customId.replace('enter_captcha_', '');
-      if (userId !== interaction.user.id) {
-        return interaction.reply({ content: '❌ This captcha challenge is not for you.', flags: MessageFlags.Ephemeral });
-      }
-
-      const challenge = pendingCaptchas.get(interaction.user.id);
-      if (!challenge) {
-        return interaction.reply({
-          content: '❌ Your verification session has expired. Please click **Verify** again.',
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
-      const modal = new ModalBuilder()
-        .setCustomId('captcha_' + interaction.user.id)
-        .setTitle('🔐 Verification Challenge');
-
-      const questionInput = new TextInputBuilder()
-        .setCustomId('captcha_answer')
-        .setLabel('Type the characters from the image')
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true)
-        .setPlaceholder('e.g. A3B7K9')
-        .setMinLength(captchaGen.CAPTCHA_LENGTH || 6)
-        .setMaxLength(12);
-
-      const row = new ActionRowBuilder().addComponents(questionInput);
-      modal.addComponents(row);
-
-      return interaction.showModal(modal);
     }
 
     // --- Captcha modal submission ---

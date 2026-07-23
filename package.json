@@ -1,6 +1,6 @@
 {
   "name": "limey",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "A Discord bot that logs everything happening in a server with a web dashboard",
   "main": "dist/index.js",
   "scripts": {
