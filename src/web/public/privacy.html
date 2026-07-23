@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — Limey</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg-primary:    #0d0e12;
+      --bg-secondary:  #141517;
+      --bg-tertiary:   #1a1b20;
+      --bg-card:       #1e1f26;
+      --text-primary:  #e4e5e7;
+      --text-secondary:#a6a7ab;
+      --text-muted:    #6b6c70;
+      --accent:        #5865F2;
+      --accent-hover:  #4752c4;
+      --success:       #57F287;
+      --border:        #2e2f34;
+      --radius:        12px;
+      --radius-sm:     8px;
+      --transition:    200ms ease;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.7;
+    }
+    .navbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 32px;
+      background: rgba(13,14,18,0.85); backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(46,47,52,0.5);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .nav-brand { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 700; text-decoration: none; color: var(--text-primary); }
+    .nav-brand span { background: linear-gradient(135deg, var(--accent), var(--success)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .nav-links { display: flex; align-items: center; gap: 8px; }
+    .nav-link { padding: 8px 16px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; color: var(--text-secondary); text-decoration: none; transition: color var(--transition), background var(--transition); }
+    .nav-link:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+    .container { max-width: 800px; margin: 0 auto; padding: 48px 24px 80px; }
+    h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; }
+    .last-updated { color: var(--text-muted); font-size: 14px; margin-bottom: 40px; }
+    h2 { font-size: 22px; font-weight: 700; margin: 40px 0 16px; color: var(--accent); }
+    h3 { font-size: 17px; font-weight: 600; margin: 24px 0 12px; }
+    p, li { color: var(--text-secondary); font-size: 15px; margin-bottom: 12px; }
+    ul, ol { padding-left: 24px; margin-bottom: 16px; }
+    li { margin-bottom: 6px; }
+    strong { color: var(--text-primary); }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 14px; }
+    th, td { border: 1px solid var(--border); padding: 10px 14px; text-align: left; }
+    th { background: var(--bg-tertiary); color: var(--text-primary); font-weight: 600; }
+    td { color: var(--text-secondary); }
+    code { background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px; font-size: 13px; color: var(--accent); }
+    hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+    .footer-link { color: var(--accent); text-decoration: none; }
+    .footer-link:hover { text-decoration: underline; }
+    @media (max-width: 768px) {
+      .navbar { padding: 12px 16px; }
+      .container { padding: 32px 16px 60px; }
+      h1 { font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="nav-brand"><svg width="28" height="28" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" stroke="#5865F2" stroke-width="2.5" fill="none"/><path d="M10 20 L16 8 L22 20" stroke="#57F287" stroke-width="2" fill="none" stroke-linecap="round"/></svg><span>Limey</span></a>
+    <div class="nav-links">
+      <a href="/" class="nav-link">Home</a>
+      <a href="/dashboard" class="nav-link">Dashboard</a>
+      <a href="/terms" class="nav-link">Terms</a>
+    </div>
+  </nav>
+  <div class="container">
+    <h1>Privacy Policy</h1>
+    <p class="last-updated">Last updated: July 22, 2026</p>
+
+    <h2>Overview</h2>
+    <p>Limey ("the Bot", "we", "us", or "our") is a moderation, logging, and management Discord bot. This Privacy Policy explains how we collect, use, store, and protect your information when you use the Bot and its associated web dashboard.</p>
+    <p>By inviting Limey to your Discord server or using its features, you agree to the practices described in this policy.</p>
+
+    <h2>1. Data We Collect</h2>
+    <h3>1.1 Data Collected Automatically</h3>
+    <p>When the Bot is active in a Discord server, the following data may be logged and stored:</p>
+    <table>
+      <thead><tr><th>Data Type</th><th>Examples</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><strong>User IDs</strong></td><td>Discord user/snowflake IDs</td><td>Tracking warnings, mod actions, verification status, ticket participation, modmail conversations</td></tr>
+        <tr><td><strong>Guild IDs</strong></td><td>Discord server/snowflake IDs</td><td>Per-guild configuration, log storage, backup references</td></tr>
+        <tr><td><strong>Channel IDs</strong></td><td>Discord channel/snowflake IDs</td><td>Log channel configuration, ticket channels, modmail threads</td></tr>
+        <tr><td><strong>Role IDs</strong></td><td>Discord role/snowflake IDs</td><td>Verified role configuration, staff roles for modmail</td></tr>
+        <tr><td><strong>Message IDs</strong></td><td>Discord message/snowflake IDs</td><td>Ticket panel messages, log references</td></tr>
+        <tr><td><strong>Usernames & Tags</strong></td><td>e.g., <code>User#1234</code> or <code>@username</code></td><td>Identifiers in moderation actions, logs, and audit trails</td></tr>
+        <tr><td><strong>Message Content</strong></td><td>Text from deleted/updated messages, trap channel messages</td><td>Event logging, auto-moderation, trap system detection</td></tr>
+        <tr><td><strong>Interaction Data</strong></td><td>Slash command inputs, button clicks, modal submissions</td><td>Command processing, ticket creation, verification</td></tr>
+        <tr><td><strong>IP Addresses</strong></td><td>Browser IP addresses</td><td>OAuth login sessions (stored in memory only, not persisted)</td></tr>
+        <tr><td><strong>Vote Records</strong></td><td>User IDs, vote timestamps, vote source</td><td>Vote tracking on Top.gg and DiscordBotList.com</td></tr>
+      </tbody>
+    </table>
+
+    <h3>1.2 Data You Voluntarily Provide</h3>
+    <ul>
+      <li><strong>Ticket & Modmail Messages:</strong> Content you submit through ticket forms or modmail DMs is stored as transcripts.</li>
+      <li><strong>Dashboard Login:</strong> When you log into the web dashboard via Discord OAuth, we receive your Discord user ID, username, avatar, and guild list. This data is stored in an in-memory session (not written to disk) and expires after 24 hours.</li>
+      <li><strong>Backup Authorizations:</strong> If you authorize the Bot to add you to servers during restore operations, your OAuth access token and refresh token are stored until the backup is deleted.</li>
+    </ul>
+
+    <h2>2. How We Use Your Data</h2>
+    <p>We use the collected data for the following purposes:</p>
+    <ul>
+      <li><strong>Server Management:</strong> Processing moderation commands (ban, kick, timeout, warn), managing tickets, handling modmail conversations.</li>
+      <li><strong>Event Logging:</strong> Recording Discord server events for audit and transparency purposes.</li>
+      <li><strong>Verification:</strong> Running image captcha challenges to verify new members are human.</li>
+      <li><strong>Anti-Bot Protection:</strong> Operating the trap/honeypot system to detect and remove automated bot accounts.</li>
+      <li><strong>Backup & Restore:</strong> Creating and restoring server configuration snapshots.</li>
+      <li><strong>Dashboard Functionality:</strong> Providing the real-time log feed, configuration interface, and management tools.</li>
+      <li><strong>Vote Tracking:</strong> Recording votes on Discord bot lists to track community engagement.</li>
+      <li><strong>Service Improvement:</strong> Aggregated, anonymized analytics to improve Bot performance and features.</li>
+    </ul>
+
+    <h2>3. Data Storage & Retention</h2>
+    <h3>3.1 Storage Location</h3>
+    <p>All data is stored on the server where the Bot is self-hosted. We do not use third-party cloud storage for data. If you use the optional Git Sync feature, configuration data may be pushed to a GitHub repository you control.</p>
+
+    <h3>3.2 Retention Periods</h3>
+    <table>
+      <thead><tr><th>Data</th><th>Retention</th></tr></thead>
+      <tbody>
+        <tr><td>Log entries</td><td>Last 5,000 entries persisted to disk; maximum 10,000 in memory</td></tr>
+        <tr><td>Warnings</td><td>Retained until manually cleared by a moderator</td></tr>
+        <tr><td>Guild configuration</td><td>Retained until the Bot is removed from the server</td></tr>
+        <tr><td>Modmail threads</td><td>Retained until the thread is manually deleted</td></tr>
+        <tr><td>Ticket data</td><td>Retained until the ticket is deleted</td></tr>
+        <tr><td>Vote records</td><td>Retained indefinitely for cumulative statistics</td></tr>
+        <tr><td>Dashboard sessions</td><td>24 hours (in-memory only)</td></tr>
+        <tr><td>Backup OAuth tokens</td><td>Retained until the associated backup is deleted</td></tr>
+        <tr><td>Captcha challenge data</td><td>2 minutes (in-memory only)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>3.3 Deletion</h3>
+    <p>You can request data deletion by:</p>
+    <ul>
+      <li>Removing the Bot from your server (deletes guild-specific configuration)</li>
+      <li>Using <code>/clearwarnings</code> to remove warning records</li>
+      <li>Using dashboard or ticket commands to delete tickets and transcripts</li>
+      <li>Contacting the Bot operator directly for additional deletion requests</li>
+    </ul>
+
+    <h2>4. Data Sharing</h2>
+    <p>We do <strong>not</strong> sell, trade, or share your personal data with third parties except:</p>
+    <ul>
+      <li><strong>GitHub (optional):</strong> If Git Sync is enabled, configuration files are pushed to a GitHub repository specified by the Bot operator.</li>
+      <li><strong>Discord API:</strong> The Bot communicates with Discord's API to function. Data exchanged with Discord is subject to <a href="https://discord.com/privacy" class="footer-link">Discord's Privacy Policy</a>.</li>
+      <li><strong>Top.gg / DiscordBotList.com (optional):</strong> If vote webhooks are configured, these services send vote notification data to the Bot.</li>
+    </ul>
+
+    <h2>5. Data Security</h2>
+    <p>We implement the following security measures:</p>
+    <ul>
+      <li><strong>No sensitive data in logs:</strong> Bot tokens and secrets are never logged or exposed in plaintext.</li>
+      <li><strong>Memory-only session storage:</strong> OAuth tokens are stored in memory only, never written to disk.</li>
+      <li><strong>CSRF protection:</strong> Login state tokens prevent cross-site request forgery attacks.</li>
+      <li><strong>HTTP-only cookies:</strong> Session cookies are HTTP-only and not accessible via JavaScript.</li>
+      <li><strong>Webhook verification:</strong> Vote webhooks are cryptographically verified using HMAC-SHA256 signatures.</li>
+      <li><strong>Optional production obfuscation:</strong> JavaScript source can be obfuscated for self-hosted deployments.</li>
+    </ul>
+    <p>However, no method of electronic storage is 100% secure. The Bot operator is responsible for maintaining the security of their own hosting environment.</p>
+
+    <h2>6. Your Rights</h2>
+    <p>Depending on your jurisdiction (e.g., GDPR, CCPA), you may have the following rights:</p>
+    <ul>
+      <li><strong>Right to Access:</strong> Request a copy of data stored about you.</li>
+      <li><strong>Right to Rectification:</strong> Request correction of inaccurate data.</li>
+      <li><strong>Right to Deletion:</strong> Request deletion of your data (see Section 3.3).</li>
+      <li><strong>Right to Restrict Processing:</strong> Request limited use of your data.</li>
+      <li><strong>Right to Data Portability:</strong> Request transfer of your data in a machine-readable format.</li>
+      <li><strong>Right to Object:</strong> Object to the processing of your data.</li>
+    </ul>
+    <p>To exercise these rights, contact the Bot operator of the instance you are using, or open an issue on the GitHub repository.</p>
+
+    <h2>7. Children's Privacy</h2>
+    <p>Limey is not intended for use by children under the age of 13 (or the applicable age of digital consent in your country). We do not knowingly collect data from children. If you believe a child has provided us with personal data, please contact us so we can delete it.</p>
+
+    <h2>8. Changes to This Policy</h2>
+    <p>We may update this Privacy Policy from time to time. Changes will be posted to the GitHub repository and reflected in the "Last updated" date at the top of this document. Continued use of the Bot after changes constitutes acceptance of the updated policy.</p>
+
+    <h2>9. Contact</h2>
+    <p>For questions about this Privacy Policy or data handling practices, please:</p>
+    <ul>
+      <li>Open an issue on the <a href="https://github.com/limey-bot/limey/issues" class="footer-link">GitHub repository</a></li>
+      <li>Contact the operator of the Bot instance you are using</li>
+    </ul>
+
+    <hr>
+    <p><em>Note: This Privacy Policy covers the default Limey Bot. Self-hosted instances may have different data handling practices. Please consult your instance operator for details specific to your deployment.</em></p>
+  </div>
+</body>
+</html>

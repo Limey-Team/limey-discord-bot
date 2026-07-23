@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../logger');
 const store = require('../store');
+const coordinator = require('../shard-coordinator');
 
 const app = express();
 const PORT = process.env.WEB_PORT || 3000;
@@ -150,6 +151,8 @@ function requireAuth(req, res, next) {
   if (req.path === '/login' || req.path === '/login.html') return next();
   if (req.path === '/' || req.path === '/index.html') return next();
   if (req.path === '/style.css' || req.path === '/dashboard.js') return next();
+  if (req.path === '/privacy' || req.path === '/privacy.html') return next();
+  if (req.path === '/terms' || req.path === '/terms.html') return next();
   if (req.path === '/dbl') return next();
   if (req.path === '/health') return next();
 
@@ -272,39 +275,21 @@ app.get('/auth/backup-callback', async (req, res) => {
     // Store the authorization
     backupSystem.storeAuthorization(backupId, user.id, accessToken, refreshToken, user.username);
 
-    // Try to DM the user a confirmation via any shard
-    const manager = app.get('discordManager');
-    if (manager) {
-      await manager.broadcastEval(
-        async (c, { targetUserId, embedData }) => {
-          const { EmbedBuilder } = require('discord.js');
-          try {
-            const discordUser = await c.users.fetch(targetUserId).catch(() => null);
-            if (!discordUser) return;
-            const embed = new EmbedBuilder()
-              .setTitle(embedData.title)
-              .setColor(embedData.color)
-              .setDescription(embedData.description);
-            await discordUser.send({ embeds: [embed] }).catch(() => {});
-          } catch (_) {}
-        },
-        {
-          context: {
-            targetUserId: user.id,
-            embedData: {
-              title: '✅ Authorization Confirmed',
-              color: 0x57F287,
-              description: [
-                'You have successfully authorized **Limey** to add you to servers during backup restoration.',
-                '',
-                'When the server owner runs **/restore** with this backup, you will automatically be added to the target server.',
-                'You can revoke this at any time via your [Discord Authorized Apps](https://discord.com/settings/authorized-apps) settings.',
-              ].join('\n'),
-            },
-          },
-        },
-      ).catch(() => {});
-    }
+    // Send the user a DM confirmation via the local client
+    const { EmbedBuilder } = require('discord.js');
+    coordinator.sendDirectMessage(user.id, {
+      embeds: [
+        new EmbedBuilder()
+          .setTitle('✅ Authorization Confirmed')
+          .setColor(0x57F287)
+          .setDescription([
+            'You have successfully authorized **Limey** to add you to servers during backup restoration.',
+            '',
+            'When the server owner runs **/restore** with this backup, you will automatically be added to the target server.',
+            'You can revoke this at any time via your [Discord Authorized Apps](https://discord.com/settings/authorized-apps) settings.',
+          ].join('\n')),
+      ],
+    }).catch(() => {});
 
     // Return a success page
     res.send(`
@@ -732,42 +717,34 @@ app.post('/api/tickets/panels/spawn', async (req, res) => {
   if (!hasAccess) return res.status(403).json({ error: 'Forbidden' });
 
   const sc = app.get('shardClient');
-  const manager = app.get('discordManager');
   if (!sc?.isReady()) return res.status(500).json({ error: 'Bot not connected' });
 
-  // Send the panel via broadcastEval so the correct shard handles it
-  const results = await manager.broadcastEval(
-    async (c, { gid, chid, pid }) => {
-      const guild = c.guilds.cache.get(gid);
-      if (!guild) return null;
-      const channel = guild.channels.cache.get(chid);
-      if (!channel || !channel.isTextBased()) return { error: 'Channel not found or not a text channel' };
+  // Check if the guild is on the local client (shard 0) first
+  const localGuild = app.get('localClient')?.guilds?.cache?.get(guildId);
+  if (localGuild) {
+    // Handle locally (shard 0)
+    const channel = localGuild.channels.cache.get(channelId);
+    if (!channel || !channel.isTextBased()) {
+      return res.status(400).json({ error: 'Channel not found or not a text channel' });
+    }
+    const panel = ticketsCore.getPanel(panelId);
+    if (!panel) return res.status(404).json({ error: `Panel "${panelId}" not found` });
+    const embed = ticketsCore.buildPanelEmbed(panel, localGuild);
+    const components = ticketsCore.buildPanelComponents(panel);
+    try {
+      const sent = await channel.send({ embeds: embed ? [embed] : [], components });
+      return res.json({ ok: true, messageId: sent.id, channelId: sent.channelId });
+    } catch (err) {
+      return res.status(500).json({ error: `Failed to send panel: ${err.message}` });
+    }
+  }
 
-      const { ticketsCore } = require('./tickets');
-      const panel = ticketsCore.getPanel(pid);
-      if (!panel) return { error: `Panel "${pid}" not found` };
-
-      const embed = ticketsCore.buildPanelEmbed(panel, guild);
-      const components = ticketsCore.buildPanelComponents(panel);
-
-      try {
-        const sent = await channel.send({
-          embeds: embed ? [embed] : [],
-          components,
-        });
-        return { ok: true, messageId: sent.id, channelId: sent.channelId };
-      } catch (err) {
-        return { error: `Failed to send panel: ${err.message}` };
-      }
-    },
-    { context: { gid: guildId, chid: channelId, pid: panelId } },
-  );
-
-  // Find the first non-null result
-  const result = results.find(r => r !== null);
-  if (!result) return res.status(404).json({ error: 'Guild not found in any shard' });
-  if (result.error) return res.status(500).json({ error: result.error });
-  res.json(result);
+  // Guild is on a remote shard — forward the request
+  const result = await coordinator.forwardToGuildShard(guildId, '/api/action/send-panel', {
+    channelId, panelId,
+  });
+  if (!result.ok) return res.status(404).json({ error: result.error || 'Guild not found in any shard' });
+  res.json(result.data);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1030,55 +1007,36 @@ app.post('/dbl', async (req, res) => {
     const stats = votes.getStats();
     console.log(`[Votes] Vote recorded: ${userId} via ${source} (total: ${stats.totalVotes})`);
 
-    // Try to DM the user a thank-you message via any shard
-    const manager = app.get('discordManager');
-    if (manager) {
-      const botId = sc?.user?.id || '';
-      const topggUrl = `https://top.gg/bot/${botId}/vote`;
-      const dblUrl = `https://discordbotlist.com/bots/${botId}/upvote`;
-      const sourceLabel = source;
-      const weekendBonus = isWeekend;
+    // Send the user a thank-you DM via the local client
+    const { EmbedBuilder } = require('discord.js');
+    const botId = sc?.user?.id || '';
+    const topggUrl = `https://top.gg/bot/${botId}/vote`;
+    const dblUrl = `https://discordbotlist.com/bots/${botId}/upvote`;
+    const sourceLabel = source;
+    const weekendBonus = isWeekend;
 
-      await manager.broadcastEval(
-        async (c, { targetUserId, embedData }) => {
-          const { EmbedBuilder } = require('discord.js');
-          try {
-            const discordUser = await c.users.fetch(targetUserId).catch(() => null);
-            if (!discordUser) return;
-            const embed = new EmbedBuilder()
-              .setTitle(embedData.title)
-              .setColor(embedData.color)
-              .setDescription(embedData.description)
-              .setTimestamp()
-              .setFooter({ text: embedData.footer });
-            await discordUser.send({ embeds: [embed] }).catch(() => {});
-          } catch (_) {}
-        },
-        {
-          context: {
-            targetUserId: userId,
-            embedData: {
-              title: '🎉 Thank You for Voting!',
-              color: 0x57F287,
-              description: [
-                'Your vote for **Limey** has been received and counted!',
-                '',
-                `You voted via **${sourceLabel}**${weekendBonus ? ' *(weekend bonus!)*' : ''}.`,
-                '',
-                'Voting helps us grow and keeps development active.',
-                'You can vote again in **12 hours**!',
-                '',
-                `⬆️ [Vote on Top.gg](${topggUrl})`,
-                `🗳️ [Vote on DiscordBotList.com](${dblUrl})`,
-              ].join('\n'),
-              footer: 'Thank you for supporting Limey! 💚',
-            },
-          },
-        },
-      ).catch(dmErr => {
-        console.error('[Votes] Failed to send thank-you DM:', dmErr.message);
-      });
-    }
+    coordinator.sendDirectMessage(userId, {
+      embeds: [
+        new EmbedBuilder()
+          .setTitle('🎉 Thank You for Voting!')
+          .setColor(0x57F287)
+          .setDescription([
+            'Your vote for **Limey** has been received and counted!',
+            '',
+            `You voted via **${sourceLabel}**${weekendBonus ? ' *(weekend bonus!)*' : ''}.`,
+            '',
+            'Voting helps us grow and keeps development active.',
+            'You can vote again in **12 hours**!',
+            '',
+            `⬆️ [Vote on Top.gg](${topggUrl})`,
+            `🗳️ [Vote on DiscordBotList.com](${dblUrl})`,
+          ].join('\n'))
+          .setTimestamp()
+          .setFooter({ text: 'Thank you for supporting Limey! 💚' }),
+      ],
+    }).catch(err => {
+      console.error('[Votes] Failed to send thank-you DM:', err.message);
+    });
 
     return res.json({ ok: true, totalVotes: stats.totalVotes });
   } catch (err) {
@@ -1174,12 +1132,26 @@ app.get('/dbl', (_req, res) => {
   res.send(html);
 });
 
+// GET /privacy — privacy policy page
+app.get('/privacy', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
+});
+
+// GET /terms — terms of service page
+app.get('/terms', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'terms.html'));
+});
+
 // 404 fallback
 app.get('*', (_req, res) => renderHomepage(res, 404));
 
-function startWebServer(manager, shardClient) {
-  app.set('discordManager', manager);
+function startWebServer(localClient, shardClient, coord) {
   app.set('shardClient', shardClient);
+  app.set('localClient', localClient);
+
+  // Mount the shard coordinator API routes
+  app.use('/api/shard', coord.createCoordinatorRouter());
+
   app.listen(PORT, () => {
     console.log(`[Web] Dashboard running at ${DASHBOARD_URL}`);
     if (CLIENT_ID && CLIENT_SECRET) {

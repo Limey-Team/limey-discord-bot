@@ -49,8 +49,7 @@ function init() {
 
 function scheduleSync() {
   if (!GITHUB_TOKEN || !GITHUB_REPO) {
-    console.warn('[GitSync] ⚠️ sync skipped — GITHUB_TOKEN or GITHUB_REPO not configured');
-    return;
+    return; // silently skip — not configured
   }
 
   // Debounce: reset the timer on each call so rapid saves batch into one commit
@@ -127,7 +126,7 @@ function doSync() {
     return;
   }
 
-  console.log('[GitSync] ✅ Synced to', GITHUB_REPO);
+  // Success — no console log to avoid noise on rapid config changes
   lastSyncResult = { time: new Date().toISOString(), success: true, message: 'Synced successfully' };
 }
 

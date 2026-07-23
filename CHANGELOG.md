@@ -150,4 +150,33 @@ All notable changes to **Limey** — Discord Moderation, Logging & Management Bo
 
 ---
 
+## [2.0.0] — Distributed Sharding, Privacy & Terms Pages
+
+### 🚀 Distributed Sharding (Major Architecture Change)
+- **New distributed sharding model** — Shards can now run on separate machines instead of requiring all shards as child processes on a single server.
+- **`src/shard-coordinator.js` (new)** — Central coordinator that runs on the main server. Manages shard registration, heartbeats, stats aggregation, and guild routing across all remote shards.
+- **`src/shard-worker-server.js` (new)** — Minimal Express server for worker shards with health check, stats, guild/user/channel lookup, and panel spawn endpoints.
+- **`src/worker.js` (new)** — Entry point for worker shard servers. Registers with the coordinator, gets assigned a shard ID, starts a Discord.js client for that shard, and sends periodic heartbeats.
+- **`src/index.js`** — Replaced `ShardingManager` with a direct Discord.js Client for shard 0. Initializes the coordinator and passes it to the web server.
+- **`src/shard-client.js`** — Replaced `broadcastEval` with the coordinator's aggregated data and direct HTTP queries to remote shards.
+- **`src/web/server.js`** — Removed all `broadcastEval` and `ShardingManager` dependencies. Added coordinator API routes (`/api/shard/register`, `/api/shard/heartbeat`, `/api/shard/list`). DM sending now uses the local client directly.
+- **`src/announce.js`** — `init()` now takes the local client instead of a manager, sends announcements directly without broadcastEval.
+- **`.env.example`** — Added `SHARD_COUNT`, `MASTER_API_KEY`, `COORDINATOR_URL`, `WORKER_URL`, `WORKER_PORT`, `WORKER_HEARTBEAT_INTERVAL`.
+- **`package.json`** — Added `start:worker` and `dev:worker` scripts.
+
+### 🔇 Silenced Git-Sync Console Noise
+- **`src/git-sync.js`** — Removed `console.log('[GitSync] ✅ Synced to...')` success log and `console.warn('[GitSync] ⚠️ sync skipped...')` warning that printed on every config file change. Error logs are preserved.
+
+### 📄 Privacy & Terms Web Pages
+- **`src/web/public/privacy.html` (new)** — Full privacy policy as a styled dark-theme webpage, converted from `PRIVACY.md`.
+- **`src/web/public/terms.html` (new)** — Full terms of service as a styled webpage, converted from `TERMS.md`.
+- **`src/web/server.js`** — Added `GET /privacy` and `GET /terms` routes. Both pages are accessible without authentication.
+- **`src/web/public/index.html`** — Added Privacy and Terms links in the footer.
+- **`src/web/public/login.html`** — Added Privacy Policy and Terms of Service links.
+
+### 📚 Documentation
+- **`README.md`** — Added a comprehensive Distributed Sharding section with architecture diagram, main server setup, worker server setup guide, and expanded environment variables reference table.
+
+---
+
 *For a full list of changes, see the [git commit log](https://github.com/limey-bot/limey/commits/main).*

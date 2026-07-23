@@ -1,14 +1,20 @@
 /**
- * ShardClient — wraps a ShardingManager to provide a client-like API
- * for the web server. Under the hood it uses broadcastEval to query
- * data from all shard processes.
+ * ShardClient — provides a client-like API for the web server.
+ *
+ * Instead of using broadcastEval (which requires a ShardingManager),
+ * it aggregates data from:
+ *   1. The local shard 0 client (for guilds on shard 0)
+ *   2. The coordinator's aggregated stats
+ *   3. Direct HTTP queries to remote shard workers
  */
 class ShardClient {
   /**
-   * @param {import('discord.js').ShardingManager} manager
+   * @param {import('discord.js').Client} localClient — The shard 0 client
+   * @param {object} coordinator — The shard coordinator module
    */
-  constructor(manager) {
-    this.manager = manager;
+  constructor(localClient, coordinator) {
+    this._localClient = localClient;
+    this._coordinator = coordinator;
     this._ready = false;
     this._cache = {
       botId: null,
@@ -37,61 +43,46 @@ class ShardClient {
 
   /**
    * Fetch bot user info + all guilds from all shards.
+   * Uses the coordinator's aggregated data.
    * Cached for up to 30 seconds.
    */
   async _refreshCache() {
     if (this._refreshPromise) return this._refreshPromise;
 
-    // Debounce: if cache is fresh (< 30s), skip
     if (Date.now() - this._cache.lastFetch < 30_000 && this._cache.guilds) {
       return;
     }
 
     this._refreshPromise = (async () => {
       try {
-        const results = await this.manager.broadcastEval((c) => {
-          const guilds = [...c.guilds.cache.values()].map(g => ({
-            id: g.id,
-            name: g.name,
-            icon: g.icon,
-            memberCount: g.memberCount,
-            ownerId: g.ownerId,
-          }));
-          return {
-            botId: c.user?.id || null,
-            botTag: c.user?.tag || null,
-            botAvatar: c.user?.avatar || null,
-            ping: c.ws?.ping || 0,
-            guilds,
-          };
-        });
+        // Get aggregated data from the coordinator
+        const localInfo = this._coordinator.getLocalShardInfo();
+        const allShards = this._coordinator.getAllShards();
 
-        // Merge results from all shards
-        const merged = { guilds: [] };
-        for (const r of results) {
-          if (r.botId) {
-            merged.botId = merged.botId || r.botId;
-            merged.botTag = merged.botTag || r.botTag;
-            merged.botAvatar = merged.botAvatar || r.botAvatar;
-            merged.ping = Math.max(merged.ping, r.ping);
-          }
-          if (r.guilds) merged.guilds.push(...r.guilds);
-        }
-
+        // Build the guild map from the local client (shard 0)
+        // Remote shard guilds are fetched on-demand via fetchGuild()
         const guildMap = new Map();
-        for (const g of merged.guilds) {
-          guildMap.set(g.id, g);
+        if (this._localClient?.guilds?.cache) {
+          for (const [id, g] of this._localClient.guilds.cache) {
+            guildMap.set(id, {
+              id: g.id,
+              name: g.name,
+              icon: g.icon,
+              memberCount: g.memberCount,
+              ownerId: g.ownerId,
+            });
+          }
         }
 
-        this._cache.botId = merged.botId;
-        this._cache.botTag = merged.botTag;
-        this._cache.botAvatar = merged.botAvatar;
-        this._cache.ping = merged.ping;
+        this._cache.botId = localInfo?.botTag?.split('#')[0] || null;
+        this._cache.botTag = localInfo?.botTag || null;
+        this._cache.botAvatar = this._localClient?.user?.avatar || null;
+        this._cache.ping = Math.max(localInfo?.ping || 0, ...allShards.map(s => s.ping || 0));
         this._cache.guilds = guildMap;
         this._cache.lastFetch = Date.now();
-        this._ready = !!merged.botId;
+        this._ready = !!this._cache.botId;
       } catch (err) {
-        console.error('[ShardClient] broadcastEval failed:', err.message);
+        console.error('[ShardClient] Refresh failed:', err.message);
       } finally {
         this._refreshPromise = null;
       }
@@ -149,13 +140,11 @@ class ShardClient {
         const id = self._cache.botId;
         const avatar = self._cache.botAvatar;
         if (!id) return '';
-        const ext = opts?.dynamic ? (avatar?.startsWith('a_') ? 'gif' : 'png') : 'png';
         const size = opts?.size || 128;
         if (avatar) {
           const format = avatar.startsWith('a_') ? 'gif' : 'png';
           return `https://cdn.discordapp.com/avatars/${id}/${avatar}.${format}?size=${size}`;
         }
-        const discrim = 0; // new Discord users don't have discriminators
         const defaultIndex = Number(BigInt(id) >> 22n) % 6;
         return `https://cdn.discordapp.com/embed/avatars/${defaultIndex}.png?size=${size}`;
       },
@@ -168,41 +157,43 @@ class ShardClient {
   }
 
   /**
-   * Fetch a Discord user by ID (searches across all shards).
-   * Returns the raw user object or null.
+   * Fetch a Discord user by ID.
+   * Tries the local client first (shard 0), then queries remote shards via HTTP.
+   * @param {string} userId
+   * @returns {Promise<object|null>}
    */
   async fetchUser(userId) {
-    const results = await this.manager.broadcastEval(
-      (c, { uid }) => {
-        return c.users.cache.get(uid) || null;
-      },
-      { context: { uid: userId } },
-    );
-    // Return the first non-null result
-    for (const r of results) {
-      if (r) return r;
+    // Try local client first
+    if (this._localClient) {
+      const user = this._localClient.users.cache.get(userId);
+      if (user) return { id: user.id, username: user.username, tag: user.tag };
     }
-    // If not in cache, try fetching from API
-    const fetchResults = await this.manager.broadcastEval(
-      async (c, { uid }) => {
-        try {
-          const user = await c.users.fetch(uid);
-          return { id: user.id, username: user.username, tag: user.tag };
-        } catch {
-          return null;
+    try {
+      const user = await this._localClient.users.fetch(userId);
+      return { id: user.id, username: user.username, tag: user.tag };
+    } catch {}
+
+    // Query remote shards
+    const allShards = this._coordinator.getAllShards();
+    for (const shard of allShards) {
+      if (shard.id === 0 || shard.status !== 'running' || shard.url === 'local') continue;
+      try {
+        const res = await fetch(`${shard.url}/api/user/${userId}`, {
+          signal: AbortSignal.timeout(3000),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.id) return data;
         }
-      },
-      { context: { uid: userId } },
-    );
-    for (const r of fetchResults) {
-      if (r) return r;
+      } catch {}
     }
     return null;
   }
 
   /**
-   * Fetch a guild by ID (searches across all shards).
-   * Returns minimal guild data { id, name, icon, memberCount, ownerId } or null.
+   * Fetch a guild by ID across all shards.
+   * @param {string} guildId
+   * @returns {Promise<object|null>}
    */
   async fetchGuild(guildId) {
     // Try cache first
@@ -210,66 +201,76 @@ class ShardClient {
       return this._cache.guilds.get(guildId);
     }
 
-    // Broadcast to all shards
-    const results = await this.manager.broadcastEval(
-      (c, { gid }) => {
-        const g = c.guilds.cache.get(gid);
-        if (!g) return null;
-        return {
-          id: g.id,
-          name: g.name,
-          icon: g.icon,
-          memberCount: g.memberCount,
-          ownerId: g.ownerId,
-        };
-      },
-      { context: { gid: guildId } },
-    );
-
-    for (const r of results) {
-      if (r) {
-        // Update cache
-        if (this._cache.guilds) this._cache.guilds.set(guildId, r);
-        return r;
-      }
+    // Check local client
+    if (this._localClient?.guilds?.cache?.has(guildId)) {
+      const g = this._localClient.guilds.cache.get(guildId);
+      const data = {
+        id: g.id, name: g.name, icon: g.icon,
+        memberCount: g.memberCount, ownerId: g.ownerId,
+      };
+      if (this._cache.guilds) this._cache.guilds.set(guildId, data);
+      return data;
     }
+
+    // Check remote shards
+    const shard = this._coordinator.findGuildShard(guildId);
+    if (shard && shard.id !== 0 && shard.url !== 'local') {
+      try {
+        const res = await fetch(`${shard.url}/api/guild/${guildId}`, {
+          signal: AbortSignal.timeout(3000),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.id) {
+            if (this._cache.guilds) this._cache.guilds.set(guildId, data);
+            return data;
+          }
+        }
+      } catch {}
+    }
+
     return null;
   }
 
   /**
-   * Fetch channels for a guild (searches across all shards).
+   * Fetch channels for a guild.
+   * @param {string} guildId
+   * @returns {Promise<Array>}
    */
   async fetchGuildChannels(guildId) {
-    const results = await this.manager.broadcastEval(
-      async (c, { gid }) => {
-        const g = c.guilds.cache.get(gid);
-        if (!g) return null;
-        try {
-          const channels = await g.channels.fetch();
-          return [...channels.values()].map(ch => ({
-            id: ch.id,
-            name: ch.name,
-            type: ch.type,
-            isTextBased: ch.isTextBased?.() || false,
-            isThread: ch.isThread?.() || false,
-          }));
-        } catch {
-          return null;
-        }
-      },
-      { context: { gid: guildId } },
-    );
-
-    for (const r of results) {
-      if (r) return r;
+    // Try local client
+    if (this._localClient?.guilds?.cache?.has(guildId)) {
+      const guild = this._localClient.guilds.cache.get(guildId);
+      try {
+        const channels = await guild.channels.fetch();
+        return [...channels.values()].map(ch => ({
+          id: ch.id, name: ch.name, type: ch.type,
+          isTextBased: ch.isTextBased?.() || false,
+          isThread: ch.isThread?.() || false,
+        }));
+      } catch {
+        return [];
+      }
     }
+
+    // Try remote shard
+    const shard = this._coordinator.findGuildShard(guildId);
+    if (shard && shard.id !== 0 && shard.url !== 'local') {
+      try {
+        const res = await fetch(`${shard.url}/api/channels/${guildId}`, {
+          signal: AbortSignal.timeout(5000),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          return data.channels || data || [];
+        }
+      } catch {}
+    }
+
     return [];
   }
 
-  /**
-   * Refresh the cache. Call this periodically (e.g. every 30s)
-   * and after significant events.
-   */
+  /** Refresh the cache. */
   async refresh() {
     await this._refreshCache();
   }

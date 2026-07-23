@@ -1,19 +1,20 @@
 /**
- * Limey — main entry point.
+ * Limey — main entry point (Main Server).
  *
  * Architecture:
- *   src/index.js          → ShardingManager (manager process)
- *   src/shard-entry.js    → Worker that each shard process runs
+ *   src/index.js          → Main server (shard 0 + web dashboard + coordinator)
+ *   src/worker.js         → Worker shard server (only Discord shard, no dashboard)
  *
- * The manager process:
- *   - Spawns shard processes via discord.js ShardingManager
- *   - Runs the Express web server (uses broadcastEval to query shards)
+ * The main server:
+ *   - Creates a Discord bot Client for shard 0
+ *   - Runs the Express web server (dashboard + coordinator API)
  *   - Manages custom bot tokens (botManager — independent Client instances)
+ *   - Hosts the Shard Coordinator — worker shards register here
  *   - Handles git-sync and auto-update
  *   - Runs the backup system
  */
 require('dotenv').config();
-const { ShardingManager } = require('discord.js');
+const { Client, GatewayIntentBits, Partials } = require('discord.js');
 
 // Init git-sync BEFORE anything that loads config files
 const gitSync = require('./git-sync');
@@ -27,6 +28,13 @@ const backupSystem = require('./backup');
 const votes = require('./votes');
 const dblApi = require('./dblApi');
 const { ShardClient } = require('./shard-client');
+const coordinator = require('./shard-coordinator');
+
+const setupBot = require('./bot');
+const captchaGen = require('./captcha');
+const { initTicketSystem } = require('./tickets');
+const { initModmail } = require('./modmail');
+const { registerCommands } = require('./commands');
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
@@ -34,41 +42,93 @@ if (!token) {
   process.exit(1);
 }
 
-// Determine shard count (auto = discord.js decides based on guild count)
-const totalShards = process.env.SHARD_COUNT || 'auto';
+// ─── Shard Configuration ──────────────────────────────────────────────
+// Total shard count must be fixed at startup. Shard 0 runs locally,
+// shards 1..N-1 are handled by remote worker servers.
+const totalShards = parseInt(process.env.SHARD_COUNT, 10) || 2;
 
-const manager = new ShardingManager('./src/shard-entry.js', {
-  token,
-  totalShards,
-  respawn: true,
+// Initialize the coordinator with the fixed shard count
+coordinator.init(totalShards);
+
+console.log(`[Main] Starting with ${totalShards} shards (shard 0 local, ${totalShards - 1} worker slots)`);
+
+// ─── Create Shard 0 Client ───────────────────────────────────────────
+const client = new Client({
+  shards: [0],
+  shardCount: totalShards,
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildIntegrations,
+    GatewayIntentBits.GuildWebhooks,
+    GatewayIntentBits.GuildInvites,
+    GatewayIntentBits.GuildModeration,
+    GatewayIntentBits.GuildEmojisAndStickers,
+    GatewayIntentBits.GuildScheduledEvents,
+    GatewayIntentBits.AutoModerationConfiguration,
+    GatewayIntentBits.AutoModerationExecution,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildPresences,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.DirectMessageReactions,
+    GatewayIntentBits.DirectMessageTyping,
+  ],
+  partials: [
+    Partials.Message,
+    Partials.Channel,
+    Partials.Reaction,
+    Partials.User,
+    Partials.GuildMember,
+  ],
 });
 
-manager.on('shardCreate', (shard) => {
-  console.log(`[ShardManager] Launched shard ${shard.id} (PID: ${shard.process?.pid || '?'})`);
-});
+// Register the local client with the coordinator
+coordinator.setLocalClient(client);
 
-// ── Bootstrap after all shards are ready ──────────────────────────────
+// Setup all bot subsystems on shard 0's client
+setupBot(client);
+initTicketSystem(client);
+initModmail(client);
+captchaGen.initCaptcha().catch(err =>
+  console.error('[Shard 0] [Captcha] Font init failed:', err.message)
+);
+
+// ── Bootstrap ─────────────────────────────────────────────────────────
 (async () => {
   try {
-    // Spawn all shards (timeout = -1 means wait forever)
-    await manager.spawn({ timeout: -1 });
-    console.log('[ShardManager] All shards are ready');
+    // Login shard 0
+    await client.login(token);
+    console.log(`[Shard 0] Logged in as ${client.user.tag}`);
+
+    // Register commands once ready
+    client.once('clientReady', async () => {
+      await registerCommands(client);
+    });
+
+    if (client.isReady()) {
+      registerCommands(client).catch(err =>
+        console.error('[Shard 0] Failed to register commands (fallback):', err.message)
+      );
+    }
 
     // Create a shard client proxy for the web server
-    const shardClient = new ShardClient(manager);
+    const shardClient = new ShardClient(client, coordinator);
     await shardClient.refresh();
     shardClient.markReady(true);
 
-    // Start subsystems that run in the manager process
+    // Start subsystems that run in the main process
     votes.init();
     botManager.loadTokensFromEnv();
     botManager.startAllSavedBots();
 
-    // Start the web dashboard (pass the shard proxy instead of a raw client)
-    startWebServer(manager, shardClient);
+    // Start the web dashboard + coordinator API
+    await startWebServer(client, shardClient, coordinator);
 
     // Check for updates and send announcement to support server
-    announce.init(manager).catch(err =>
+    announce.init(client).catch(err =>
       console.error('[Announce] Error during init:', err.message)
     );
 
@@ -82,18 +142,14 @@ manager.on('shardCreate', (shard) => {
 
     // ─── Discord Bot List (DBL) API stats posting ─────────────────────
     if (dblApi.isConfigured()) {
-      // Post stats immediately on startup
-      postDblStats(manager).catch(err =>
+      postDblStats(client, coordinator).catch(err =>
         console.error('[DBL API] Initial stats post failed:', err.message)
       );
-
-      // Then every hour
       setInterval(async () => {
-        await postDblStats(manager).catch(err =>
+        await postDblStats(client, coordinator).catch(err =>
           console.error('[DBL API] Periodic stats post failed:', err.message)
         );
       }, 60 * 60 * 1000);
-
       console.log('[DBL API] Discord Bot List integration enabled (stats every hour)');
     } else {
       console.log('[DBL API] Not configured — set DBL_API_TOKEN to enable');
@@ -106,9 +162,12 @@ manager.on('shardCreate', (shard) => {
       );
     }, 30_000);
 
-    console.log('[ShardManager] All systems ready');
+    // Log coordinator status
+    const shardList = coordinator.getAllShards();
+    console.log(`[Main] ✅ All systems ready — ${shardList.length}/${totalShards} shards online`);
+
   } catch (err) {
-    console.error('[ShardManager] Failed to start:', err.message);
+    console.error('[Main] Failed to start:', err.message);
     process.exit(1);
   }
 })();
@@ -116,64 +175,30 @@ manager.on('shardCreate', (shard) => {
 /**
  * Collect stats from all shards and post them to Discord Bot List.
  */
-async function postDblStats(manager) {
-  const results = await manager.broadcastEval((c) => {
-    const guilds = [...c.guilds.cache.values()];
-    const totalUsers = guilds.reduce((acc, g) => acc + (g.memberCount || 0), 0);
-    return {
-      botId: c.user?.id || null,
-      guildCount: guilds.length,
-      userCount: totalUsers,
-      shardId: c.shard?.id ?? 0,
-    };
-  });
+async function postDblStats(localClient, coord) {
+  const stats = coord.getAggregatedStats();
+  const localInfo = coord.getLocalShardInfo();
 
-  if (!results || results.length === 0) {
-    console.warn('[DBL API] No shard data collected');
-    return;
-  }
-
-  // Merge stats from all shards
-  let botId = null;
-  let totalGuilds = 0;
-  let totalUsers = 0;
-  for (const r of results) {
-    if (r.botId) botId = botId || r.botId;
-    totalGuilds += r.guildCount || 0;
-    totalUsers += r.userCount || 0;
-  }
-
+  const botId = localClient.user?.id || null;
   if (!botId) {
     console.warn('[DBL API] Could not determine bot ID');
     return;
   }
 
   await dblApi.postStats(botId, {
-    guilds: totalGuilds,
-    users: totalUsers,
+    guilds: stats.guildCount,
+    users: stats.userCount,
     shard_id: 0,
-    shard_count: results.length,
+    shard_count: stats.shardCount,
   });
 }
 
-// Graceful shutdown — forward SIGTERM/SIGINT to each shard process directly
-// instead of using broadcastEval (which can cause ERR_IPC_CHANNEL_CLOSED
-// when the IPC channel closes during shutdown).
+// Graceful shutdown
 async function shutdown() {
-  console.log('[ShardManager] Shutting down all shards...');
+  console.log('[Main] Shutting down...');
   try {
-    // Send SIGTERM directly to each shard's child process so they can
-    // run their own graceful shutdown handler independently
-    for (const [, shard] of manager.shards) {
-      if (shard.process?.kill) {
-        shard.process.kill('SIGTERM');
-      }
-    }
-    // Give shards up to 5 seconds to exit gracefully
-    await new Promise(resolve => setTimeout(resolve, 5000));
-  } catch (_) {
-    // Shards may already be shutting down
-  }
+    await client.destroy();
+  } catch (_) {}
   process.exit(0);
 }
 

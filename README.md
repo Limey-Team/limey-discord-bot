@@ -251,7 +251,73 @@ When your bot runs on an ephemeral filesystem, all data files are lost on restar
 
 **How it works:** after any config change (log channel, verify setup, limey trap, warnings, ticket configs, backups), the bot writes the file locally and schedules a git commit+push within 5 seconds. Multiple rapid changes are batched into a single commit. Commits include `[skip ci]` to avoid re-deploy loops. On startup, the latest data is pulled from GitHub so previous deployments' changes are preserved.
 
-### 7. Environment Variables Reference
+### 7. Distributed Sharding (Optional)
+
+Limey supports **distributed sharding** — running Discord bot shards across multiple machines. This allows you to scale beyond a single server's capacity.
+
+#### Architecture
+
+```
+Main Server (shard 0 + web dashboard + coordinator)
+├── Discord.js Client (shard 0)
+├── Web Dashboard + REST API
+├── Coordinator API (manages remote shards)
+│
+└── Worker Server 1 (shard 1)
+│   ├── Discord.js Client (shard 1)
+│   └── Lightweight HTTP server (health/stats)
+│
+└── Worker Server 2 (shard 2)
+    ├── Discord.js Client (shard 2)
+    └── Lightweight HTTP server (health/stats)
+```
+
+The main server runs shard 0 and the web dashboard. Worker servers register with the main server's coordinator to get assigned a shard ID and periodically send heartbeats with their stats.
+
+#### Main Server Setup
+
+Set these env vars on the main server (along with the usual config):
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `SHARD_COUNT` | Yes | `2` | Total number of shards (shard 0 local + N-1 worker slots) |
+| `MASTER_API_KEY` | Yes | — | Shared secret for worker authentication. Set to a random string. |
+
+#### Worker Server Setup
+
+On each worker machine:
+
+```bash
+# Install dependencies
+npm install
+
+# Copy the .env.example and set these vars:
+cp .env.example .env
+# Edit .env with:
+#   DISCORD_TOKEN=your_bot_token
+#   COORDINATOR_URL=https://your-main-server.com
+#   MASTER_API_KEY=your_shared_secret
+#   WORKER_URL=https://this-worker.example.com
+#   SHARD_COUNT=3 (must match main server)
+
+# Start the worker
+npm run start:worker
+```
+
+**Worker env vars:**
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `COORDINATOR_URL` | ✅ Yes | — | URL of the main server (e.g., `https://limey-discord-bot.onrender.com`) |
+| `MASTER_API_KEY` | ✅ Yes | — | Must match the main server's key |
+| `DISCORD_TOKEN` | ✅ Yes | — | Same bot token as the main server |
+| `WORKER_URL` | No | auto | This worker's public URL (for guild/user lookup routing) |
+| `WORKER_PORT` | No | `3000 + shardId` | Port for the worker's HTTP server |
+| `WORKER_HEARTBEAT_INTERVAL` | No | `30000` | Milliseconds between heartbeats to the coordinator |
+
+**Important:** The `SHARD_COUNT` must be the **same on all servers** — Discord.js uses `(guildId >> 22) % shardCount` to determine which shard owns a guild. Changing this after shards are running will re-map guilds.
+
+### 8. Environment Variables Reference
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
@@ -261,6 +327,12 @@ When your bot runs on an ephemeral filesystem, all data files are lost on restar
 | `BOT_OWNER_ID` | No | — | Your Discord user ID — grants full dashboard access + owner-only commands |
 | `DASHBOARD_URL` | No | `http://localhost:3000` | Base URL for OAuth redirect |
 | `WEB_PORT` | No | `3000` | Dashboard web server port |
+| `SHARD_COUNT` | Yes (distributed) | `2` | Total shard count (shard 0 + N-1 worker slots) |
+| `MASTER_API_KEY` | Yes (distributed) | — | Shared secret for worker shard authentication |
+| `COORDINATOR_URL` | For workers | — | Main server URL for worker registration |
+| `WORKER_URL` | For workers | — | Worker's public URL for guild routing |
+| `WORKER_PORT` | No | `3000 + shardId` | Worker HTTP server port |
+| `WORKER_HEARTBEAT_INTERVAL` | No | `30000` | Worker heartbeat interval (ms) |
 | `GITHUB_TOKEN` | For persistence | — | GitHub PAT for auto-sync |
 | `GITHUB_REPO` | For persistence | auto-detect | GitHub repo for auto-sync |
 | `GITHUB_BRANCH` | No | `main` | Branch for git-sync |
@@ -270,7 +342,7 @@ When your bot runs on an ephemeral filesystem, all data files are lost on restar
 | `DBL_WEBHOOK_SECRET` | For vote webhooks | — | Webhook secret from DiscordBotList.com (Authorization header verification) |
 | `DBL_API_TOKEN` | For DBL stats/commands | — | API token from [discordbotlist.com](https://discordbotlist.com/) — enables auto-posting stats and syncing slash commands to your bot's profile |
 
-### 8. Discord Bot List Integration (Optional)
+### 9. Discord Bot List Integration (Optional)
 
 Limey can automatically integrate with [Discord Bot List](https://discordbotlist.com/) to:
 

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms of Service — Limey</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg-primary:    #0d0e12;
+      --bg-secondary:  #141517;
+      --bg-tertiary:   #1a1b20;
+      --bg-card:       #1e1f26;
+      --text-primary:  #e4e5e7;
+      --text-secondary:#a6a7ab;
+      --text-muted:    #6b6c70;
+      --accent:        #5865F2;
+      --border:        #2e2f34;
+      --radius-sm:     8px;
+      --transition:    200ms ease;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.7;
+    }
+    .navbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 32px;
+      background: rgba(13,14,18,0.85); backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(46,47,52,0.5);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .nav-brand { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 700; text-decoration: none; color: var(--text-primary); }
+    .nav-brand span { background: linear-gradient(135deg, var(--accent), #57F287); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .nav-links { display: flex; align-items: center; gap: 8px; }
+    .nav-link { padding: 8px 16px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; color: var(--text-secondary); text-decoration: none; transition: color var(--transition), background var(--transition); }
+    .nav-link:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+    .container { max-width: 800px; margin: 0 auto; padding: 48px 24px 80px; }
+    h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; }
+    .last-updated { color: var(--text-muted); font-size: 14px; margin-bottom: 40px; }
+    h2 { font-size: 22px; font-weight: 700; margin: 40px 0 16px; color: var(--accent); }
+    h3 { font-size: 17px; font-weight: 600; margin: 24px 0 12px; }
+    p, li { color: var(--text-secondary); font-size: 15px; margin-bottom: 12px; }
+    ul, ol { padding-left: 24px; margin-bottom: 16px; }
+    li { margin-bottom: 6px; }
+    strong { color: var(--text-primary); }
+    code { background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px; font-size: 13px; color: var(--accent); }
+    hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+    .footer-link { color: var(--accent); text-decoration: none; }
+    .footer-link:hover { text-decoration: underline; }
+    @media (max-width: 768px) {
+      .navbar { padding: 12px 16px; }
+      .container { padding: 32px 16px 60px; }
+      h1 { font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="nav-brand"><svg width="28" height="28" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" stroke="#5865F2" stroke-width="2.5" fill="none"/><path d="M10 20 L16 8 L22 20" stroke="#57F287" stroke-width="2" fill="none" stroke-linecap="round"/></svg><span>Limey</span></a>
+    <div class="nav-links">
+      <a href="/" class="nav-link">Home</a>
+      <a href="/dashboard" class="nav-link">Dashboard</a>
+      <a href="/privacy" class="nav-link">Privacy</a>
+    </div>
+  </nav>
+  <div class="container">
+    <h1>Terms and Conditions</h1>
+    <p class="last-updated">Last updated: July 22, 2026</p>
+
+    <h2>1. Acceptance of Terms</h2>
+    <p>By inviting, using, or interacting with Limey ("the Bot") in any Discord server, or by accessing the web dashboard, you agree to be bound by these Terms and Conditions ("Terms"). If you do not agree, do not use the Bot.</p>
+    <p>These Terms apply to all users, including server administrators, moderators, and regular members of Discord servers where the Bot is present.</p>
+
+    <h2>2. Description of Service</h2>
+    <p>Limey is a multi-purpose Discord bot that provides the following features:</p>
+    <ul>
+      <li>Event logging and monitoring</li>
+      <li>Moderation tools (ban, kick, timeout, warn, purge)</li>
+      <li>Image captcha verification</li>
+      <li>Anti-bot trap/honeypot system</li>
+      <li>Ticket management system</li>
+      <li>Modmail (direct message) communication system</li>
+      <li>Custom bot management</li>
+      <li>Backup and restore functionality</li>
+      <li>Real-time web dashboard with Discord OAuth login</li>
+      <li>Vote tracking integration</li>
+    </ul>
+    <p>The Bot is provided "as is" and may be modified, updated, or discontinued at any time without notice.</p>
+
+    <h2>3. Eligibility</h2>
+    <p>To use the Bot, you must:</p>
+    <ul>
+      <li>Be at least 13 years of age (or the age of digital consent in your country)</li>
+      <li>Comply with <a href="https://discord.com/terms" class="footer-link">Discord's Terms of Service</a> and <a href="https://discord.com/guidelines" class="footer-link">Community Guidelines</a></li>
+      <li>Have the legal authority to agree to these Terms</li>
+    </ul>
+
+    <h2>4. User Responsibilities</h2>
+    <h3>4.1 Server Administrators</h3>
+    <p>As a server administrator using the Bot:</p>
+    <ul>
+      <li>You are responsible for configuring the Bot appropriately for your server</li>
+      <li>You are responsible for any actions taken by moderators using Bot commands</li>
+      <li>You should inform your server members about the Bot's logging and data collection practices</li>
+      <li>You must not use the Bot for illegal, harmful, or malicious purposes</li>
+    </ul>
+    <h3>4.2 General Users</h3>
+    <p>As a user interacting with the Bot:</p>
+    <ul>
+      <li>You agree not to attempt to bypass, exploit, or abuse any Bot feature (e.g., captcha verification, trap system)</li>
+      <li>You agree not to use the Bot to harass, spam, or harm others</li>
+      <li>You agree not to attempt to reverse-engineer, decompile, or tamper with the Bot's code</li>
+      <li>You agree not to use the Bot in violation of Discord's Terms of Service</li>
+    </ul>
+
+    <h2>5. Moderation Actions</h2>
+    <p>The Bot provides tools for server moderation. The following applies:</p>
+    <ul>
+      <li>All moderation actions are initiated by human moderators (except the auto-ban trap system)</li>
+      <li>The trap/honeypot system automatically bans users who post in designated trap channels</li>
+      <li>The Bot is a tool, and server administrators are responsible for its use</li>
+      <li>We are not liable for moderation decisions made using the Bot</li>
+    </ul>
+
+    <h2>6. Intellectual Property</h2>
+    <ul>
+      <li>The Bot's source code is licensed under the <a href="/LICENSE" class="footer-link">MIT License</a></li>
+      <li>You may self-host the Bot in compliance with the license terms</li>
+      <li>You may not claim ownership of the Bot or its code</li>
+      <li>The Bot's name "Limey" and any associated branding may not be used without permission</li>
+    </ul>
+
+    <h2>7. Limitation of Liability</h2>
+    <p>To the maximum extent permitted by law:</p>
+    <ul>
+      <li>The Bot is provided "as is" without warranties of any kind, express or implied</li>
+      <li>We are not liable for any damages arising from the use or inability to use the Bot</li>
+      <li>We are not responsible for data loss, server disruptions, or Discord API changes</li>
+      <li>We are not liable for actions taken by server administrators or moderators using the Bot</li>
+    </ul>
+
+    <h2>8. Indemnification</h2>
+    <p>You agree to indemnify and hold harmless the Bot developers, maintainers, and contributors from any claims, damages, or expenses arising from:</p>
+    <ul>
+      <li>Your use of the Bot</li>
+      <li>Your violation of these Terms</li>
+      <li>Your violation of any third-party rights, including Discord's Terms of Service</li>
+    </ul>
+
+    <h2>9. Termination</h2>
+    <p>We reserve the right to:</p>
+    <ul>
+      <li>Terminate or suspend access to the Bot for any user or server at any time</li>
+      <li>Discontinue the Bot or any feature without notice</li>
+      <li>Block specific servers or users from using the Bot</li>
+    </ul>
+    <p>Upon termination:</p>
+    <ul>
+      <li>You should remove the Bot from your server</li>
+      <li>Data may be deleted in accordance with the Privacy Policy</li>
+      <li>Sections 6, 7, 8, and 12 of these Terms shall survive termination</li>
+    </ul>
+
+    <h2>10. Changes to Terms</h2>
+    <p>We may modify these Terms at any time. Changes will be:</p>
+    <ul>
+      <li>Posted to the GitHub repository</li>
+      <li>Reflected in the "Last updated" date at the top of this document</li>
+      <li>Effective immediately upon posting</li>
+    </ul>
+    <p>Continued use of the Bot after changes constitutes acceptance of the updated Terms.</p>
+
+    <h2>11. Governing Law</h2>
+    <p>These Terms shall be governed by and construed in accordance with the laws of the United States, without regard to its conflict of law provisions. Any disputes shall be resolved in the courts of the United States.</p>
+
+    <h2>12. Contact</h2>
+    <p>For questions about these Terms, please:</p>
+    <ul>
+      <li>Open an issue on the <a href="https://github.com/limey-bot/limey/issues" class="footer-link">GitHub repository</a></li>
+      <li>Contact the operator of the Bot instance you are using</li>
+    </ul>
+
+    <hr>
+    <p><em>Note: These Terms cover the official Limey Bot. Self-hosted instances are operated independently and the operators of those instances bear their own responsibility.</em></p>
+  </div>
+</body>
+</html>

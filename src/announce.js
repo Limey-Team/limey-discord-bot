@@ -152,10 +152,10 @@ async function checkAndAnnounce(client) {
 }
 
 /**
- * Initialize the announcement check from the manager process.
- * Uses broadcastEval to have all shards attempt to send the announcement.
+ * Initialize the announcement check from the main server process.
+ * Uses the local shard 0 client directly to send the announcement.
  */
-async function init(manager) {
+async function init(client) {
   const currentHash = getCurrentCommit();
   if (!currentHash) {
     console.log('[Announce] ℹ️ No git commit available — skipping update announcement');
@@ -177,34 +177,15 @@ async function init(manager) {
     return;
   }
 
-  // New commits! Try to announce via broadcastEval
+  // New commits! Send announcement using the local shard 0 client
   console.log('[Announce] 🔄 New commits detected — attempting announcement...');
 
-  // Use fetch to get shard count, then pick a single shard to announce.
-  // This avoids duplicate sends when multiple shards have the channel cached.
-  const shardCount = manager.totalShards;
-  const targetShard = 0; // Always use shard 0 for announcements
+  const result = await checkAndAnnounce(client);
 
-  const result = await manager.broadcastEval(async (c, { absPath, targetSid }) => {
-    // Only the target shard handles the announcement
-    const sid = c.shard?.id ?? 0;
-    if (sid !== targetSid) return { announced: false, reason: `Not target shard (shard ${sid})` };
-
-    const announce = require(absPath);
-    const r = await announce.checkAndAnnounce(c);
-    if (r.announced) {
-      console.log(`[Announce] ✅ Update announcement sent to support server`);
-    }
-    return r;
-  }, { context: { absPath: announcePath, targetSid: targetShard } });
-
-  // Log the results
-  const announced = result.find(r => r && r.announced);
-  if (announced) {
-    console.log(`[Announce] ✅ Update announcement sent (${announced.commits} commit(s))`);
+  if (result.announced) {
+    console.log(`[Announce] ✅ Update announcement sent (${result.commits} commit(s))`);
   } else {
-    const reasons = result.filter(r => r && !r.announced).map(r => r.reason).join('; ');
-    console.log(`[Announce] ℹ️ ${reasons || 'No shard could send the announcement'}`);
+    console.log(`[Announce] ℹ️ ${result.reason || 'Could not send announcement'}`);
   }
 }
 
