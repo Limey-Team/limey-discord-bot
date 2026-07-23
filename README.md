@@ -180,9 +180,14 @@ npm start
 
 # Or with auto-reload (dev mode)
 npm run dev
+
+# Or with hot-reload on git push (requires GIT_AUTO_UPDATE=true)
+npm run start:runner
 ```
 
 The dashboard will be at **http://localhost:3000**
+
+> **What's the runner?** `npm run start:runner` runs `src/runner.js`, a thin parent process that forks the bot as a child. When `git-sync` detects a new commit via auto-update, the child sends an IPC message and the parent seamlessly restarts it — no `process.kill`, no Render restart needed. Use this if you want the bot to auto-update without ever exiting.
 
 ### 4. Production Build
 

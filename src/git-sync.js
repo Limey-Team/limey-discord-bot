@@ -329,12 +329,20 @@ function startAutoUpdate() {
         console.log('[GitSync] ✅ Dependencies installed');
       }
 
-      // Step 6: Clean exit — process manager will see exit and restart
-      console.log('[GitSync] 🔄 Update complete — exiting for restart...');
-      // Don't reset updating — process exits via SIGTERM after 2s
-      setTimeout(() => {
-        process.kill(process.pid, 'SIGTERM');
-      }, 2000);
+      // Step 6: Notify parent process (runner.js) to restart the bot child.
+      // If running under runner.js (RUNNER_PID is set), send an IPC message
+      // so the parent can gracefully kill and re-fork us.
+      // If running standalone, keep the old behavior of SIGTERM self-kill.
+      if (process.send) {
+        console.log('[GitSync] 🔄 Update ready — signalling parent to restart...');
+        process.send('update-ready');
+        // Don't reset updating — parent will kill us
+      } else {
+        console.log('[GitSync] 🔄 Update complete — exiting for restart...');
+        setTimeout(() => {
+          process.kill(process.pid, 'SIGTERM');
+        }, 2000);
+      }
     } catch (err) {
       console.error('[GitSync] ❌ Auto-update error:', err.message);
       updating = false; // Reset on error so next interval can try again

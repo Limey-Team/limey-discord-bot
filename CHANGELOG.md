@@ -4,7 +4,7 @@ All notable changes to **Limey** — Discord Moderation, Logging & Management Bo
 
 ---
 
-## [2.0.2] — Render Port Detection Fix & Obfuscation Compatibility
+## [2.0.2] — Render Port Detection Fix, Obfuscation Compatibility & Hot-Reload Runner
 
 ### 🐛 Render Port Detection Fix
 
@@ -23,9 +23,16 @@ All notable changes to **Limey** — Discord Moderation, Logging & Management Bo
 
 - **`src/web/server.js`** — Added `if (req.path.startsWith('/api/shard')) return next();` to the `requireAuth` middleware to bypass the OAuth session check for coordinator API routes. When `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` are configured, the auth middleware was blocking all `/api/*` requests that lacked a session cookie — including worker shard registration (`POST /api/shard/register`), heartbeats (`POST /api/shard/heartbeat`), and listing (`GET /api/shard/list`). Worker shards don't have browser sessions, so they got a 401 "Unauthorized" before ever reaching the coordinator's `MASTER_API_KEY` verification.
 
+### 🔄 Hot-Reload Runner (Update Without Exiting)
+
+- **`src/runner.js` (new)** — Parent process that forks `src/index.js` as a child and manages its lifecycle. Listens for IPC `'update-ready'` messages from the child. When received, gracefully kills the child (SIGTERM with 10s force-kill fallback) and forks a new one with the updated code. Handles unexpected crashes with a 3-second auto-restart delay. On clean exit (code 0), shuts itself down.
+- **`src/git-sync.js`** — Modified `startAutoUpdate()` to send an IPC `'update-ready'` message to the parent via `process.send()` when running under the runner. Falls back to the old `process.kill(SIGTERM)` behavior when running standalone (no parent process).
+- **`package.json`** — Added `npm run start:runner` script (`node src/runner.js`).
+- To use: switch from `npm start` to `npm run start:runner`. The bot will then hot-reload on new git pushes without the process ever exiting.
+
 ### 📚 Documentation
 
-- **`README.md`** — Updated Production Build section to reflect the fixed obfuscation options. Added a note explaining why `selfDefending`, `debugProtection`, and high `controlFlowFlattening` are disabled for Node.js compatibility. Updated the health endpoint description to mention the git-sync startup order.
+- **`README.md`** — Updated Production Build section to reflect the fixed obfuscation options. Added a note explaining why `selfDefending`, `debugProtection`, and high `controlFlowFlattening` are disabled for Node.js compatibility. Updated the health endpoint description to mention the git-sync startup order. Added runner entry point documentation in the Configure & Run section.
 
 ---
 
