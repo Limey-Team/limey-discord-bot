@@ -100,9 +100,9 @@ captchaGen.initCaptcha().catch(err =>
 // Start the Express server before client.login() so Render detects the port
 // immediately. The health endpoint returns bot: 'disconnected' until login.
 const shardClient = new ShardClient(client, coordinator);
-startWebServer(client, shardClient, coordinator)
-  .then(() => console.log(`[Web] Dashboard server started on port ${process.env.PORT || process.env.WEB_PORT || 3000}`))
-  .catch(err => console.error('[Web] Failed to start web server:', err.message));
+// startWebServer returns the Express app (not a Promise) — app.listen() is non-blocking.
+// The server starts listening immediately so Render detects the port.
+startWebServer(client, shardClient, coordinator);
 
 // ── Bootstrap ─────────────────────────────────────────────────────────
 (async () => {
