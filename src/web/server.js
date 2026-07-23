@@ -151,6 +151,7 @@ function requireAuth(req, res, next) {
   if (req.path === '/login' || req.path === '/login.html') return next();
   if (req.path === '/' || req.path === '/index.html') return next();
   if (req.path === '/style.css' || req.path === '/dashboard.js') return next();
+  if (req.path === '/shards') return next();
   if (req.path === '/privacy' || req.path === '/privacy.html') return next();
   if (req.path === '/terms' || req.path === '/terms.html') return next();
   if (req.path === '/dbl') return next();
@@ -193,6 +194,11 @@ app.get('/index.html', (_req, res) => {
 // GET /dashboard — dashboard (requires auth via middleware)
 app.get('/dashboard', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+// GET /shards — shard monitoring dashboard
+app.get('/shards', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'shards.html'));
 });
 
 // GET /login — show login page

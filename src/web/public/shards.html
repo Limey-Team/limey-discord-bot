@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Limey — Shard Monitor</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .shard-page {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+    .shard-page h1 {
+      font-size: 24px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .shard-page .subtitle {
+      color: #a6a7ab;
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .shard-summary {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .shard-summary .stat {
+      background: #1e1f26;
+      border: 1px solid #2e2f34;
+      border-radius: 10px;
+      padding: 16px 20px;
+      min-width: 120px;
+      text-align: center;
+    }
+    .shard-summary .stat .num {
+      font-size: 22px;
+      font-weight: 800;
+    }
+    .shard-summary .stat .label {
+      font-size: 11px;
+      color: #6b6c70;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+    }
+    .shard-summary .stat .num.green { color: #57F287; }
+    .shard-summary .stat .num.yellow { color: #FEE75C; }
+    .shard-summary .stat .num.red { color: #ED4245; }
+
+    .shard-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1e1f26;
+      border: 1px solid #2e2f34;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .shard-table th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #6b6c70;
+      background: #16171c;
+      border-bottom: 1px solid #2e2f34;
+    }
+    .shard-table td {
+      padding: 12px 16px;
+      font-size: 14px;
+      border-bottom: 1px solid #2e2f34;
+    }
+    .shard-table tr:last-child td { border-bottom: none; }
+    .shard-table tr:hover td { background: #25262b; }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .status-badge .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+    .status-badge.running { background: rgba(87,242,135,0.12); color: #57F287; }
+    .status-badge.running .dot { background: #57F287; }
+    .status-badge.starting { background: rgba(254,231,92,0.12); color: #FEE75C; }
+    .status-badge.starting .dot { background: #FEE75C; }
+    .status-badge.stale { background: rgba(237,66,69,0.12); color: #ED4245; }
+    .status-badge.stale .dot { background: #ED4245; }
+    .status-badge.stopped { background: rgba(108,109,113,0.12); color: #6b6c70; }
+    .status-badge.stopped .dot { background: #6b6c70; }
+
+    .shard-url {
+      color: #a6a7ab;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 13px;
+    }
+    .shard-id {
+      font-weight: 700;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+    .shard-ping {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 13px;
+    }
+
+    .refresh-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .refresh-bar .last-updated {
+      font-size: 12px;
+      color: #6b6c70;
+    }
+    .refresh-btn {
+      background: #25262b;
+      border: 1px solid #2e2f34;
+      color: #e4e5e7;
+      padding: 6px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: background 150ms ease;
+    }
+    .refresh-btn:hover { background: #2e2f34; }
+
+    .auto-refresh-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #a6a7ab;
+    }
+    .auto-refresh-toggle input[type="checkbox"] {
+      accent-color: #5865F2;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #a6a7ab;
+      text-decoration: none;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+    .back-link:hover { color: #e4e5e7; }
+  </style>
+</head>
+<body>
+  <div class="shard-page">
+    <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+    <h1>🖥️ Shard Monitor</h1>
+    <p class="subtitle">Real-time status of all Discord shards</p>
+
+    <div class="shard-summary" id="summaryContainer">
+      <div class="stat"><div class="num" id="totalShards">0</div><div class="label">Total Shards</div></div>
+      <div class="stat"><div class="num green" id="runningShards">0</div><div class="label">Running</div></div>
+      <div class="stat"><div class="num yellow" id="startingShards">0</div><div class="label">Starting</div></div>
+      <div class="stat"><div class="num red" id="staleShards">0</div><div class="label">Stale</div></div>
+    </div>
+
+    <div class="refresh-bar">
+      <div class="auto-refresh-toggle">
+        <input type="checkbox" id="autoRefresh" checked>
+        <label for="autoRefresh">Auto-refresh (5s)</label>
+      </div>
+      <div>
+        <span class="last-updated" id="lastUpdated">—</span>
+        <button class="refresh-btn" id="refreshBtn">↻ Refresh</button>
+      </div>
+    </div>
+
+    <table class="shard-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Status</th>
+          <th>URL</th>
+          <th>Guilds</th>
+          <th>Users</th>
+          <th>Ping</th>
+          <th>Bot Tag</th>
+          <th>Heartbeat</th>
+        </tr>
+      </thead>
+      <tbody id="shardTableBody">
+        <tr><td colspan="8" style="text-align:center;color:#6b6c70;padding:24px">Loading shards...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    let refreshInterval = null;
+
+    function formatTime(ts) {
+      const d = new Date(ts);
+      return d.toLocaleTimeString();
+    }
+
+    function timeAgo(ts) {
+      const diff = Date.now() - ts;
+      if (diff < 1000) return 'just now';
+      if (diff < 60000) return Math.floor(diff / 1000) + 's ago';
+      if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+      return Math.floor(diff / 3600000) + 'h ago';
+    }
+
+    function statusBadge(status) {
+      const labels = { running: 'Running', starting: 'Starting', stale: 'Stale', stopped: 'Stopped' };
+      return `<span class="status-badge ${status}"><span class="dot"></span>${labels[status] || status}</span>`;
+    }
+
+    async function fetchShards() {
+      try {
+        const res = await fetch('/api/shard/list');
+        if (!res.ok) throw new Error('Failed to fetch');
+        const data = await res.json();
+        renderShards(data);
+        document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+      } catch (err) {
+        document.getElementById('shardTableBody').innerHTML =
+          `<tr><td colspan="8" style="text-align:center;color:#ED4245;padding:24px">❌ Error loading shards: ${err.message}</td></tr>`;
+      }
+    }
+
+    function renderShards(data) {
+      const shards = data.shards || [];
+      const stats = data.stats || {};
+
+      // Summary
+      document.getElementById('totalShards').textContent = data.totalShards || 0;
+      const running = shards.filter(s => s.status === 'running').length;
+      const starting = shards.filter(s => s.status === 'starting').length;
+      const stale = shards.filter(s => s.status === 'stale').length;
+      document.getElementById('runningShards').textContent = running;
+      document.getElementById('startingShards').textContent = starting;
+      document.getElementById('staleShards').textContent = stale;
+
+      // Table
+      if (shards.length === 0) {
+        document.getElementById('shardTableBody').innerHTML =
+          `<tr><td colspan="8" style="text-align:center;color:#6b6c70;padding:24px">No shards registered</td></tr>`;
+        return;
+      }
+
+      let html = '';
+      for (const s of shards) {
+        const isLocal = s.url === 'local';
+        html += `<tr>
+          <td><span class="shard-id">#${s.id}${isLocal ? ' ★' : ''}</span></td>
+          <td>${statusBadge(s.status)}</td>
+          <td class="shard-url" title="${s.url}">${isLocal ? 'Local (shard 0)' : s.url.length > 35 ? s.url.substring(0, 35) + '…' : s.url}</td>
+          <td>${s.guildCount?.toLocaleString() || 0}</td>
+          <td>${s.userCount?.toLocaleString() || 0}</td>
+          <td class="shard-ping">${s.ping ? s.ping + 'ms' : '—'}</td>
+          <td>${s.botTag || '—'}</td>
+          <td style="font-size:12px;color:#6b6c70">${s.lastHeartbeat ? timeAgo(s.lastHeartbeat) : '—'}</td>
+        </tr>`;
+      }
+      document.getElementById('shardTableBody').innerHTML = html;
+    }
+
+    // Toggle auto-refresh
+    document.getElementById('autoRefresh').addEventListener('change', function() {
+      if (this.checked) {
+        refreshInterval = setInterval(fetchShards, 5000);
+      } else {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+      }
+    });
+
+    // Manual refresh
+    document.getElementById('refreshBtn').addEventListener('click', fetchShards);
+
+    // Initial load
+    fetchShards();
+    refreshInterval = setInterval(fetchShards, 5000);
+  </script>
+</body>
+</html>

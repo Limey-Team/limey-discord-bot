@@ -4,6 +4,27 @@ All notable changes to **Limey** — Discord Moderation, Logging & Management Bo
 
 ---
 
+## [2.1.0] — Shard Dashboard, Worker Health Endpoint & URL Dedup
+
+### 🖥️ Shard Monitor Dashboard
+
+- **`src/web/public/shards.html` (new)** — A full-featured shard monitoring dashboard with real-time auto-refresh (5s), summary statistics (total/running/starting/stale), and a detailed table showing shard ID, status badge, URL, guild count, user count, ping, bot tag, and last heartbeat time. Accessible at `/shards`.
+- **`src/web/server.js`** — Added `GET /shards` route and auth bypass for the shard page. Added a Shards link in the dashboard sidebar navigation.
+
+### 🏷️ Shard URL Deduplication
+
+- **`src/shard-coordinator.js`** — Modified `registerShard()` to check if a worker URL is already registered before allocating a new shard ID. If the same URL re-registers (e.g., after a worker restart or re-deploy), the coordinator now reuses the existing shard ID and resets its status to `'starting'`. This prevents workers from consuming multiple shard slots on re-registration.
+
+### 🐛 Worker Health Endpoint Fix
+
+- **`src/worker.js`** — Moved `startWorkerServer()` to before `client.login()`, matching the same pattern as the main server. The worker's `/health` endpoint now starts listening immediately on startup (returns `bot: 'disconnected'` until login), so Render detects the worker's port before the Discord connection completes.
+
+### 📚 Documentation
+
+- **`README.md`** — Added Shard Monitor dashboard to the OAuth Web Dashboard features list.
+
+---
+
 ## [2.0.2] — Render Port Detection Fix, Obfuscation Compatibility & Hot-Reload Runner
 
 ### 🐛 Render Port Detection Fix

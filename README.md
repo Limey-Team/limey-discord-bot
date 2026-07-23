@@ -114,6 +114,7 @@ A full-featured Discord bot with **comprehensive event logging, moderation tools
 - **Spawn Panel** — send ticket panels to any channel without typing commands
 - **Backup Manager** — create, restore, delete backups visually, with user restore toggle
 - **Custom Bots** — manage custom bot instances
+- **Shard Monitor** — real-time shard status dashboard at `/shards` with auto-refresh, status badges, and per-shard stats
 - **Offline caching** — Service Worker caches dashboard assets for offline access
 - **Offline banner** — shows when connection is lost, cached content remains visible
 - **Interactive help guide** — press `?` anywhere in the dashboard

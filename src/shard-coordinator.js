@@ -89,6 +89,23 @@ function registerShard(shardUrl, authKey) {
     return { ok: false, error: 'shardUrl is required' };
   }
 
+  const normalizedUrl = shardUrl.replace(/\/+$/, '');
+
+  // Check if this URL already has a registered shard — deduplicate
+  for (const [, shard] of shards) {
+    if (shard.url === normalizedUrl) {
+      console.log(`[ShardCoordinator] Re-registered shard ${shard.id} at ${shardUrl} (same URL, reused ID)`);
+      shard.status = 'starting';
+      shard.lastHeartbeat = Date.now();
+      return {
+        ok: true,
+        shardId: shard.id,
+        totalShards: _totalShards,
+        reused: true,
+      };
+    }
+  }
+
   // Find a free shard ID
   if (availableIds.length === 0) {
     return { ok: false, error: `No available shard IDs (all ${_totalShards - 1} worker slots are taken)` };
@@ -97,7 +114,7 @@ function registerShard(shardUrl, authKey) {
   const id = availableIds.shift();
   const info = {
     id,
-    url: shardUrl.replace(/\/+$/, ''),
+    url: normalizedUrl,
     status: 'starting',
     lastHeartbeat: Date.now(),
     guildCount: 0,

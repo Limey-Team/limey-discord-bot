@@ -179,11 +179,19 @@ async function unregisterFromCoordinator() {
       console.error(`[Shard ${assignedShardId}] [Captcha] Font init failed:`, err.message)
     );
 
-    // Step 4: Login
+    // Step 4: Start the minimal HTTP server BEFORE login so Render detects the port
+    // immediately. The /health endpoint returns bot: 'disconnected' until login.
+    try {
+      workerServer = await startWorkerServer(client, assignedShardId, assignedShardCount, WORKER_PORT);
+    } catch (err) {
+      console.warn(`[Shard ${assignedShardId}] Worker server failed to start (non-fatal):`, err.message);
+    }
+
+    // Step 5: Login
     await client.login(token);
     console.log(`[Shard ${assignedShardId}] Logged in as ${client.user.tag}`);
 
-    // Step 5: Register commands once ready
+    // Step 6: Register commands once ready
     client.once('clientReady', async () => {
       await registerCommands(client);
     });
@@ -192,13 +200,6 @@ async function unregisterFromCoordinator() {
       registerCommands(client).catch(err =>
         console.error(`[Shard ${assignedShardId}] Failed to register commands (fallback):`, err.message)
       );
-    }
-
-    // Step 6: Start the minimal HTTP server
-    try {
-      workerServer = await startWorkerServer(client, assignedShardId, assignedShardCount, WORKER_PORT);
-    } catch (err) {
-      console.warn(`[Shard ${assignedShardId}] Worker server failed to start (non-fatal):`, err.message);
     }
 
     // Step 7: Start sending heartbeats
