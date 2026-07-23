@@ -154,6 +154,7 @@ function requireAuth(req, res, next) {
   if (req.path === '/privacy' || req.path === '/privacy.html') return next();
   if (req.path === '/terms' || req.path === '/terms.html') return next();
   if (req.path === '/dbl') return next();
+  if (req.path.startsWith('/api/shard')) return next();
   if (req.path === '/health') return next();
 
   if (!session) {

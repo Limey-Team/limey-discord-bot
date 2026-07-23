@@ -19,6 +19,10 @@ All notable changes to **Limey** — Discord Moderation, Logging & Management Bo
   - Removed `debugProtectionInterval` (depends on `debugProtection`).
 - All other protections remain: RC4 string encoding (100% coverage), dead code injection (100%), identifier mangling, object key transformation, string splitting, and number expressions.
 
+### 🐛 Coordinator Auth Bypass (Worker Registration Fix)
+
+- **`src/web/server.js`** — Added `if (req.path.startsWith('/api/shard')) return next();` to the `requireAuth` middleware to bypass the OAuth session check for coordinator API routes. When `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` are configured, the auth middleware was blocking all `/api/*` requests that lacked a session cookie — including worker shard registration (`POST /api/shard/register`), heartbeats (`POST /api/shard/heartbeat`), and listing (`GET /api/shard/list`). Worker shards don't have browser sessions, so they got a 401 "Unauthorized" before ever reaching the coordinator's `MASTER_API_KEY` verification.
+
 ### 📚 Documentation
 
 - **`README.md`** — Updated Production Build section to reflect the fixed obfuscation options. Added a note explaining why `selfDefending`, `debugProtection`, and high `controlFlowFlattening` are disabled for Node.js compatibility. Updated the health endpoint description to mention the git-sync startup order.
