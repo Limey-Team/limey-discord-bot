@@ -4,6 +4,27 @@ All notable changes to **Limey** — Discord Moderation, Logging & Management Bo
 
 ---
 
+## [2.0.2] — Render Port Detection Fix & Obfuscation Compatibility
+
+### 🐛 Render Port Detection Fix
+
+- **`src/index.js`** — Moved `gitSync.init()` to after `startWebServer()` so the synchronous `execFileSync('git fetch', ...)` call (up to 15-second timeout) does not block the HTTP port from opening. On Render, the port must be detected within seconds of process start — any synchronous delay before `app.listen()` causes a failed deploy with "No open HTTP ports detected."
+
+### 🔧 Obfuscation Compatibility (Node.js)
+
+- **`scripts/build.js`** — Disabled three obfuscation options that were causing silent crashes in Node.js environments:
+  - `selfDefending: true` → `false` — The tamper-detection mechanism false-positives in Node.js, throwing an unhandled error that silently kills the process with no visible log output.
+  - `debugProtection: true` → `false` — Browser-oriented debugger traps (`setInterval` with `new Function('debugger')`) are useless in Node.js and add unnecessary event loop overhead.
+  - `controlFlowFlatteningThreshold: 0.9` → `0.3` — At 90%, control flow flattening restructures `async/await` and `try-catch` blocks into switch-case dispatchers that break Node.js error handling, causing unhandled promise rejections and silent crashes.
+  - Removed `debugProtectionInterval` (depends on `debugProtection`).
+- All other protections remain: RC4 string encoding (100% coverage), dead code injection (100%), identifier mangling, object key transformation, string splitting, and number expressions.
+
+### 📚 Documentation
+
+- **`README.md`** — Updated Production Build section to reflect the fixed obfuscation options. Added a note explaining why `selfDefending`, `debugProtection`, and high `controlFlowFlattening` are disabled for Node.js compatibility. Updated the health endpoint description to mention the git-sync startup order.
+
+---
+
 ## [1.0.0] — Initial Release
 
 ### ✨ Event Logging

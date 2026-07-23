@@ -117,7 +117,7 @@ A full-featured Discord bot with **comprehensive event logging, moderation tools
 - **Offline caching** — Service Worker caches dashboard assets for offline access
 - **Offline banner** — shows when connection is lost, cached content remains visible
 - **Interactive help guide** — press `?` anywhere in the dashboard
-- `GET /health` — health check endpoint (returns `{ status: "ok", bot: "connected"| "disconnected" }` — the server starts listening immediately, so Render detects the port even before the bot finishes logging in)
+- `GET /health` — health check endpoint (returns `{ status: "ok", bot: "connected"| "disconnected" }` — the server starts listening immediately, so Render detects the port even before the bot finishes logging in). Git sync (`gitSync.init()`) also runs after the web server starts to avoid blocking port detection.
 
 ## Setup
 
@@ -186,7 +186,7 @@ The dashboard will be at **http://localhost:3000**
 
 ### 4. Production Build
 
-To build the bot for production with **maximum-security JavaScript obfuscation**:
+To build the bot for production with **JavaScript obfuscation**:
 
 ```bash
 # Build & obfuscate
@@ -196,20 +196,28 @@ npm run build
 npm run start:prod
 ```
 
+> **Note:** For platforms like Render, you can also run the source code directly via `npm start` for the simplest setup. The production build is primarily useful when you want to distribute the bot or protect the source code from casual inspection.
+
 The build script includes **multiple layers of protection**:
 
 | Protection | Description |
 |------------|-------------|
-| 🌀 **Control Flow Flattening** | Restructures code into switch-case dispatchers (90% coverage) — mimics a VM |
+| 🌀 **Control Flow Flattening** | Restructures code into switch-case dispatchers (30% coverage) — obfuscates logic flow |
 | 💀 **Dead Code Injection** | Injects junk code paths (100% threshold) — confuses reverse engineering |
 | 🔐 **String Array (RC4)** | All strings are RC4-encoded and stored in shuffled arrays with function wrappers |
-| 🛡️ **Self-Defending** | Code breaks if beautified or reformatted — prevents deobfuscation tools |
-| 🚫 **Debug Protection** | Inserts debugger traps that block step-through debugging when a debugger is attached |
-| ⏱️ **Debug Protection Interval** | Re-checks for debugger connections every 2 seconds — prevents circumvention |
 | 🔄 **Identifier Mangling** | All variable/function names are shuffled and mangled |
 | 🔑 **Object Key Transformation** | Static property access is converted to dynamic lookups |
 | 🔢 **Number Expressions** | Numeric literals become complex arithmetic expressions |
 | ✂️ **String Splitting** | Strings are split into 5-character chunks — hides content from static analysis |
+
+> **Why not use `selfDefending`, `debugProtection`, or higher `controlFlowFlattening`?**
+> These options are designed for browser environments and cause silent crashes in Node.js.
+> `selfDefending` false-positives in Node and kills the process; `debugProtection` adds
+> useless debugger traps that interfere with the event loop; and `controlFlowFlattening`
+> above 30% increasingly risks breaking `async/await` and `try-catch` error handling. The remaining protections
+> (RC4 string encoding, dead code injection, identifier mangling, object key transformation,
+> string splitting, number expressions) provide strong obfuscation while staying fully
+> compatible with Node.js.
 
 The build script:
 - Obfuscates all `.js` files from `src/` into `dist/` using `javascript-obfuscator` with `target: 'node'`
@@ -217,7 +225,7 @@ The build script:
 - Preserves the full directory structure
 - Reports a summary of files processed, obfuscated, copied, and skipped
 
-> **Note:** The production build runs from `dist/` and requires the same `.env` configuration. Obfuscation increases code size and may impact startup time — this is expected with maximum protection enabled.
+> **Note:** The production build runs from `dist/` and requires the same `.env` configuration. Obfuscation increases code size and may impact startup time — this is expected with obfuscation enabled.
 
 ### 5. Optional: Discord OAuth for Dashboard
 
@@ -399,7 +407,7 @@ Press **`?`** anywhere in the dashboard to open the interactive help guide, whic
 - [discord.js](https://discord.js.org/) v14 — Discord API client
 - [express](https://expressjs.com/) — Web server & dashboard
 - [dotenv](https://github.com/motdotla/dotenv) — Environment variable loading
-- [javascript-obfuscator](https://obfuscator.io/) — Production build obfuscation (control flow, string encoding, debug protection)
+- [javascript-obfuscator](https://obfuscator.io/) — Production build obfuscation (control flow, string encoding, identifier mangling)
 - [jimp](https://github.com/jimp-dev/jimp) — Image captcha generation (pure JS, no native dependencies)
 
 ## License

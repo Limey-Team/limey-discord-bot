@@ -28,32 +28,37 @@ const COPY_EXT = new Set(['.html', '.css', '.json', '.txt', '.md', '.png', '.jpg
 
 // ─── Maximum VM-Style Obfuscation Settings ──────────────────────────
 // These options emulate VM-like protection using:
-// - controlFlowFlattening (switch-case dispatcher) at max threshold
+// - controlFlowFlattening (switch-case dispatcher) at moderate threshold
 // - deadCodeInjection (junk code) at max threshold
 // - stringArray (rc4-encoded strings) at max threshold
 // - transformObjectKeys (object access virtualization)
-// - selfDefending (tamper resistance, breaks code if beautified)
-// - debugProtection (freezes debugger when DevTools is detected)
-// - debugProtectionInterval (periodic re-check every 2s)
-// - target: 'node' (optimized for Node.js)
+// - identifier mangling
+//
+// Note: selfDefending and debugProtection are DISABLED for Node.js
+// compatibility — they cause silent crashes on Render and other
+// Node.js hosts due to false-positive tamper detection and
+// debugger traps interfering with the event loop.
+//
+// controlFlowFlatteningThreshold is set to 0.3 (not 0.9) because
+// higher values break async/await and try-catch error flow in
+// Node.js, causing unhandled promise rejections and silent crashes.
 //
 // For true bytecode VM obfuscation, upgrade to:
 //   https://obfuscator.io  (Pro plan)
 const OBFUSCATOR_OPTIONS = {
   compact: true,
   controlFlowFlattening: true,
-  controlFlowFlatteningThreshold: 0.9,
+  controlFlowFlatteningThreshold: 0.3,
   deadCodeInjection: true,
   deadCodeInjectionThreshold: 1.0,
-  debugProtection: true,
-  debugProtectionInterval: 2000, // Periodic re-check (browser-oriented; adds minor overhead in Node.js)
+  debugProtection: false,
   disableConsoleOutput: false,
   identifierNamesGenerator: 'mangled-shuffled',
   ignoreImports: true,
   log: false,
   numbersToExpressions: true,
   renameGlobals: false,
-  selfDefending: true,
+  selfDefending: false,
   simplify: true,
   splitStrings: true,
   splitStringsChunkLength: 5,

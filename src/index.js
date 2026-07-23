@@ -18,7 +18,6 @@ const { Client, GatewayIntentBits, Partials } = require('discord.js');
 
 const gitSync = require('./git-sync');
 
-
 const announce = require('./announce');
 const release = require('./release');
 const { startWebServer } = require('./web/server');
