@@ -104,7 +104,7 @@ async function createClient(guildId, token) {
       resolve({ error: 'Bot login timed out. Check your token and try again.' });
     }, 15000);
 
-    client.once('ready', async () => {
+    client.once('clientReady', async () => {
       clearTimeout(timeout);
       console.log(
         `[BotManager] Custom bot logged in as ${sanitizeForLog(client.user.tag)} for guild ${sanitizeForLog(guildId)}`

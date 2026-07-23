@@ -67,7 +67,7 @@ captchaGen.initCaptcha().catch(err =>
     console.log(`[Shard ${SHARD_ID}] Logged in as ${client.user.tag}`);
 
     // Register commands once the client is fully ready
-    client.once('ready', async () => {
+    client.once('clientReady', async () => {
       await registerCommands(client);
     });
 
@@ -85,9 +85,21 @@ captchaGen.initCaptcha().catch(err =>
 })();
 
 // Graceful shutdown
-function shutdown() {
+async function shutdown() {
   console.log(`[Shard ${SHARD_ID}] Shutting down...`);
-  client.destroy();
+  try {
+    // client.destroy() returns a Promise in discord.js v14 — await it
+    // to properly catch any async errors (e.g. ERR_IPC_CHANNEL_CLOSED
+    // when the parent ShardingManager closes the IPC channel before
+    // the shard finishes tearing down its websocket connection).
+    await client.destroy();
+  } catch (err) {
+    if (err.code === 'ERR_IPC_CHANNEL_CLOSED') {
+      console.log(`[Shard ${SHARD_ID}] IPC channel closed during shutdown (expected)`);
+    } else {
+      console.error(`[Shard ${SHARD_ID}] Error during shutdown:`, err.message);
+    }
+  }
   process.exit(0);
 }
 

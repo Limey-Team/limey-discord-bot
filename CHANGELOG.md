@@ -134,7 +134,19 @@ All notable changes to **Limey** — Discord Moderation, Logging & Management Bo
 ### Bug Fixes
 - **Captcha verification timed out** — Fixed `sendCaptchaChallenge()` calling `interaction.reply()` after Jimp image generation, which could exceed Discord's 3-second interaction window. Now defers the reply immediately (`interaction.deferReply()`) so the user sees a loading state, then generates the image and edits the deferred reply (`interaction.editReply()`). Previous code had no error handler for this, so no logs appeared in the error channel.
 - **"Enter Captcha" button was unresponsive** — The `interactionCreate` handler structure had a bug: the `verify_` button handler used an early `return` for non-matching custom IDs, which exited the entire handler before the `enter_captcha_` button handler could ever run. Restructured the button handling into a single `if (interaction.isButton())` block with else-if chaining so all button types are reachable.
-- **Version bumped** to 1.2.1 reflecting all changes.
+
+---
+
+## [1.3.0] — Auto-Update Shutdown Crash Fix
+
+### Bug Fixes
+- **`ERR_IPC_CHANNEL_CLOSED` during auto-update shutdown** — When `git-sync` detected a new commit and triggered a restart via `SIGTERM`, the ShardManager called `broadcastEval()` (which uses IPC) to tell shards to destroy their clients. During shutdown the IPC channel could close before all shards finished tearing down, causing an uncaught `ERR_IPC_CHANNEL_CLOSED` exception that produced an ugly stack trace.
+  - **`src/index.js`**: Replaced `broadcastEval`-based shutdown with direct `SIGTERM` signals to each shard's child process. This avoids the IPC channel dependency entirely — each shard independently runs its own graceful shutdown handler.
+  - **`src/shard-entry.js`**: Wrapped `client.destroy()` in a try-catch that gracefully handles `ERR_IPC_CHANNEL_CLOSED` as an expected condition during shutdown, without logging a noisy stack trace.
+- **Version bumped** to 1.3.0 reflecting all changes.
+
+### Deprecation Fixes
+- **`'ready'` event renamed to `'clientReady'`** — Changed all `client.once('ready', ...)` calls to `client.once('clientReady', ...)` to eliminate the discord.js v14 deprecation warning. The `'ready'` event was renamed to distinguish it from the gateway `READY` event and will stop emitting altogether in v15.
 
 ---
 

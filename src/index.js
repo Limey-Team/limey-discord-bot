@@ -156,13 +156,21 @@ async function postDblStats(manager) {
   });
 }
 
-// Graceful shutdown — forward SIGTERM/SIGINT to all shards
+// Graceful shutdown — forward SIGTERM/SIGINT to each shard process directly
+// instead of using broadcastEval (which can cause ERR_IPC_CHANNEL_CLOSED
+// when the IPC channel closes during shutdown).
 async function shutdown() {
   console.log('[ShardManager] Shutting down all shards...');
   try {
-    await manager.broadcastEval((c) => {
-      c.destroy();
-    });
+    // Send SIGTERM directly to each shard's child process so they can
+    // run their own graceful shutdown handler independently
+    for (const [, shard] of manager.shards) {
+      if (shard.process?.kill) {
+        shard.process.kill('SIGTERM');
+      }
+    }
+    // Give shards up to 5 seconds to exit gracefully
+    await new Promise(resolve => setTimeout(resolve, 5000));
   } catch (_) {
     // Shards may already be shutting down
   }
