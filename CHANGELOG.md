@@ -4,6 +4,79 @@ All notable changes to **Limey** — Discord Moderation, Logging & Management Bo
 
 ---
 
+## [2.2.0] — Proxy-Based Hot-Reload (No More Render Failures)
+
+### 🔄 Proxy-Based Hot-Reload Runner
+
+Completely reworked the hot-reload system to prevent Render from detecting the bot as "exited early" during auto-updates. Previously, even with `src/runner.js`, the child process's HTTP port went down during restarts — Render saw the port close and marked the instance as failed.
+
+**New architecture:** The runner now runs its own HTTP **proxy server** that holds the Render port open permanently. The bot's Express server runs on an internal port (PORT + 5000), and the proxy forwards all requests to it.
+
+```
+┌─────────────────────────────────────────┐
+│  runner.js (parent — NEVER exits)       │
+│  ┌─────────────────────────────────────┐│
+│  │  HTTP proxy on external port        ││  ← ALWAYS OPEN
+│  │  - /health → 200 directly           ││
+│  │  - Everything → proxy → internal    ││
+│  └─────────────────────────────────────┘│
+│         ↕ IPC                           │
+│  ┌─────────────────────────────────────┐│
+│  │  index.js (child, restarts)         ││
+│  │  Express on internal port           ││  ← Killed & re-forked
+│  └─────────────────────────────────────┘│
+└─────────────────────────────────────────┘
+```
+
+- **`src/runner.js` (rewritten)** — Now creates an `http.Server` on `EXTERNAL_PORT` (Render's PORT) BEFORE forking the child. The proxy:
+  - Handles `GET /health` directly at the runner level — always returns `{ status: 'ok', runner: true }` regardless of child state
+  - Proxies all other requests to the child's internal Express server at `127.0.0.1:INTERNAL_PORT`
+  - Returns 503 when the child isn't ready (between fork and child's `'web-ready'` signal)
+  - Returns 502 if the child's internal server is unreachable
+  - Sets `childWebReady = false` on exit or 'update-ready', blocking proxying until the new child signals readiness
+  - The proxy NEVER closes — Render always sees an open port with a valid HTTP response
+  - Sets `PORT` env var to `INTERNAL_PORT` for the child, and `RUNNER_PORT` to the external port for correct `DASHBOARD_URL`
+
+- **`src/web/server.js`** — Added two changes for runner compatibility:
+  - `EXTERNAL_PORT = process.env.RUNNER_PORT || PORT` — ensures `DASHBOARD_URL` uses the external (Render) port, not the internal port, so OAuth redirect URIs resolve correctly
+  - After `app.listen()` callback, sends IPC `'web-ready'` signal to the parent runner — this tells the runner the Express server is actually listening, eliminating the race condition where the proxy could forward requests to a not-yet-listening internal port
+
+- **Result:** Zero Render downtime during auto-updates. The proxy server stays alive, the port stays bound, health checks always succeed, and the child seamlessly restarts on new git pushes.
+
+### 🚀 Deployment
+
+To use the new proxy-based runner:
+
+1. **Update your Render Start Command** from:
+   ```
+   npm start
+   ```
+   to:
+   ```
+   npm run start:runner
+   ```
+
+2. **Deploy** — Push this commit to GitHub. Render will build and deploy the new code. The service will start with the proxy runner holding the port open.
+
+3. **Verify** — Check the service logs. You should see:
+   ```
+   [Runner] Proxy listening on port 10000 -> internal :15000
+   [Runner] Bot started (pid: 12345)
+   ...
+   [Web] Dashboard running at https://limey-discord-bot.onrender.com
+   [Runner] Child web server ready
+   ```
+
+4. **Auto-update triggers** — When a new commit is pushed to GitHub:
+   - The child detects it via git-sync auto-update
+   - Child pulls code, runs npm install, sends `'update-ready'` via IPC
+   - Runner kills child, forks a new one — proxy stays alive the whole time
+   - No Render downtime, no "Application exited early"
+
+**Note:** The old `npm start` still works for standalone use. The runner is optional but recommended for any service that needs zero-downtime auto-updates.
+
+---
+
 ## [2.1.0] — Shard Dashboard, Worker Health Endpoint & URL Dedup
 
 ### 🖥️ Shard Monitor Dashboard

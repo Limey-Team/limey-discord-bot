@@ -188,7 +188,66 @@ npm run start:runner
 
 The dashboard will be at **http://localhost:3000**
 
-> **What's the runner?** `npm run start:runner` runs `src/runner.js`, a thin parent process that forks the bot as a child. When `git-sync` detects a new commit via auto-update, the child sends an IPC message and the parent seamlessly restarts it — no `process.kill`, no Render restart needed. Use this if you want the bot to auto-update without ever exiting.
+> **What's the runner?** `npm run start:runner` runs `src/runner.js`, a parent process that forks the bot as a child and runs an **HTTP proxy server** that holds the Render port open permanently. See the [Proxy Runner Architecture](#proxy-runner-architecture) section for details.
+
+### Proxy Runner Architecture
+
+The runner uses an HTTP proxy to prevent Render from detecting "Application exited early" during auto-updates. Here's how it works:
+
+```
+┌─────────────────────────────────────────┐
+│  runner.js (parent — NEVER exits)       │
+│  ┌─────────────────────────────────────┐│
+│  │  HTTP proxy on EXTERNAL_PORT        ││  ← ALWAYS OPEN
+│  │  - /health → 200 directly           ││
+│  │  - Everything → proxy → child's     ││
+│  │    internal Express server           ││
+│  └─────────────────────────────────────┘│
+│         ↕ IPC ('web-ready')             │
+│  ┌─────────────────────────────────────┐│
+│  │  index.js (child, restarts)         ││
+│  │  Express on INTERNAL_PORT           ││  ← Killed & re-forked
+│  └─────────────────────────────────────┘│
+└─────────────────────────────────────────┘
+```
+
+**Why this matters:** When the old `process.kill` approach triggered an auto-update, the HTTP port went down. Render detected this and marked the instance as "Application exited early" — even if the process restarted moments later. The proxy architecture solves this by:
+
+1. **Runner starts first** — Before the bot even forks, the runner's proxy server starts listening on the Render port. Render immediately sees an open port.
+2. **Health endpoint at the runner level** — `GET /health` is handled directly by the proxy (returns `{ status: 'ok', runner: true }`), never affected by the child's state.
+3. **Internal Express on separate port** — The child's Express server listens on `INTERNAL_PORT` (external PORT + 5000). The proxy forwards all non-health requests to it.
+4. **Readiness gating** — The proxy doesn't forward requests until the child sends a `'web-ready'` IPC message (sent from inside `app.listen()`'s callback — guaranteed to fire after the internal port is bound).
+5. **Seamless restarts** — When auto-update triggers, the runner blocks proxying, kills the child, forks a new one, and waits for the new `'web-ready'` before resuming. The external port never closes.
+
+**Result:** Render sees a continuously running process with a continuously open port. Zero failed deploys, zero "exited early" errors.
+
+### Deployment on Render
+
+To deploy on Render with hot-reload:
+
+1. **Set the Start Command** to:
+   ```
+   npm run start:runner
+   ```
+2. **Environment Variables** — Same as usual (`DISCORD_TOKEN`, `GITHUB_TOKEN`, etc.)
+3. **No additional ports** — Render only needs to see the external port (standard `PORT` variable)
+4. **Verify deployment** — Check service logs for:
+   ```
+   [Runner] 🔌 Proxy listening on port 10000 -> internal :15000
+   [Runner] ✅ Bot started (pid: 12345)
+   ...
+   [Web] Dashboard running at https://limey-discord-bot.onrender.com
+   [Runner] ✅ Child web server ready
+   ==> Your service is live 🎉
+   ```
+5. **Auto-update triggers** — When a new commit is pushed to GitHub with `GIT_AUTO_UPDATE=true`:
+   - The child detects it via git-sync
+   - Child pulls the code and runs `npm install`
+   - Child sends `'update-ready'` IPC message
+   - Runner kills the old child and forks a new one with the updated code
+   - The proxy stays alive — **zero downtime**
+
+> **Note:** The old `npm start` still works for standalone/local use where Render's port detection isn't a concern.
 
 ### 4. Production Build
 

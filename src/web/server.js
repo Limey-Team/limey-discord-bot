@@ -8,9 +8,10 @@ const coordinator = require('../shard-coordinator');
 
 const app = express();
 const PORT = process.env.PORT || process.env.WEB_PORT || 3000;
+const EXTERNAL_PORT = process.env.RUNNER_PORT || PORT;
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
-const DASHBOARD_URL = process.env.DASHBOARD_URL || `http://localhost:${PORT}`;
+const DASHBOARD_URL = process.env.DASHBOARD_URL || `http://localhost:${EXTERNAL_PORT}`;
 const IS_SECURE = DASHBOARD_URL.startsWith('https://');
 const REDIRECT_URI = `${DASHBOARD_URL}/auth/callback`;
 const BOT_OWNER_ID = process.env.BOT_OWNER_ID || null;
@@ -1165,6 +1166,10 @@ function startWebServer(localClient, shardClient, coord) {
       console.log(`[Web] Auth: Discord OAuth (Login with Discord)`);
     } else {
       console.log(`[Web] Auth: DISABLED (set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET to enable)`);
+    }
+    // Tell the runner (if any) that the Express server is ready
+    if (process.env.RUNNER_PID && typeof process.send === 'function') {
+      process.send('web-ready').catch(() => {});
     }
   });
   return app;
