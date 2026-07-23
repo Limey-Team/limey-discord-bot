@@ -16,9 +16,8 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
 
-// Init git-sync BEFORE anything that loads config files
 const gitSync = require('./git-sync');
-gitSync.init();
+
 
 const announce = require('./announce');
 const release = require('./release');
@@ -103,6 +102,10 @@ const shardClient = new ShardClient(client, coordinator);
 // startWebServer returns the Express app (not a Promise) — app.listen() is non-blocking.
 // The server starts listening immediately so Render detects the port.
 startWebServer(client, shardClient, coordinator);
+
+// Init git-sync AFTER the web server starts so Render detects the port immediately.
+// The sync pulls latest config from GitHub; any delay here won't block the health check.
+gitSync.init();
 
 // ── Bootstrap ─────────────────────────────────────────────────────────
 (async () => {
