@@ -27,10 +27,16 @@
  * Falls through to the standalone behavior when RUNNER_PID is not set.
  */
 const http = require('http');
+const fs = require('fs');
 const { fork } = require('child_process');
 const path = require('path');
 
-const CHILD_SCRIPT = path.join(__dirname, 'index.js');
+// Auto-detect: use dist/index.js if it exists (production build), else src/index.js
+const SRC_SCRIPT = path.join(__dirname, 'index.js');
+const DIST_SCRIPT = path.join(__dirname, '..', 'dist', 'index.js');
+const CHILD_SCRIPT = fs.existsSync(DIST_SCRIPT) ? DIST_SCRIPT : SRC_SCRIPT;
+const BUILD_MODE = CHILD_SCRIPT === DIST_SCRIPT ? 'production' : 'source';
+
 const CHILD_KILL_TIMEOUT = 10_000;
 
 // ─── Port Configuration ────────────────────────────────────────────────
@@ -112,6 +118,7 @@ const proxy = http.createServer((req, res) => {
 // ─── Start Proxy (before forking — port opens immediately) ───────────
 proxy.listen(EXTERNAL_PORT, '0.0.0.0', () => {
   console.log(`[Runner] 🔌 Proxy listening on port ${EXTERNAL_PORT} → internal :${INTERNAL_PORT}`);
+  console.log(`[Runner] 📦 Running ${BUILD_MODE} build: ${path.relative(path.join(__dirname, '..'), CHILD_SCRIPT)}`);
   startBot();
 });
 

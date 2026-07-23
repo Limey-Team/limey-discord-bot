@@ -10,7 +10,9 @@
     "start:worker": "node src/worker.js",
     "dev:worker": "node --watch src/worker.js",
     "build": "node scripts/build.js",
-    "start:prod": "node dist/index.js"
+    "start:prod": "node dist/index.js",
+    "start:prod:runner": "node src/runner.js",
+    "build-and-run": "npm run build && node src/runner.js"
   },
   "keywords": [
     "discord",
