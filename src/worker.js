@@ -22,7 +22,9 @@ const { initModmail } = require('./modmail');
 const { registerCommands } = require('./commands');
 
 // ── Configuration ─────────────────────────────────────────────────────
-const COORDINATOR_URL = (process.env.COORDINATOR_URL || '').replace(/\/+$/, '');
+const COORDINATOR_URL = (process.env.COORDINATOR_URL || '')
+  .replace(/(https?:\/\/)+/i, '$1') // strip duplicate protocol prefixes
+  .replace(/\/+$/, ''); // strip trailing slashes
 const MASTER_API_KEY = process.env.MASTER_API_KEY || '';
 const WORKER_PORT = parseInt(process.env.WORKER_PORT, 10) || 0; // 0 = auto (3000 + shardId)
 const HEARTBEAT_INTERVAL = parseInt(process.env.WORKER_HEARTBEAT_INTERVAL, 10) || 30_000; // 30s

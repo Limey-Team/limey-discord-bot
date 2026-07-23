@@ -17,6 +17,7 @@ function getGithubRepo() {
   try {
     const origin = execSync('git remote get-url origin', {
       cwd: PROJECT_ROOT, encoding: 'utf8', timeout: 5000,
+      stdio: ['pipe', 'pipe', 'ignore'], // ignore stderr — no origin is expected in some envs
     }).trim();
     // Handle https://github.com/user/repo.git or git@github.com:user/repo.git
     const match = origin.match(/github\\.com[:/](.+?)(?:\\.git)?$/);

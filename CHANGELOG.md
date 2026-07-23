@@ -179,4 +179,17 @@ All notable changes to **Limey** — Discord Moderation, Logging & Management Bo
 
 ---
 
+## [2.0.1] — Render Health Check, Double-Protocol Fix, Git-Sync Noise
+
+### Bug Fixes
+- **Render "No open ports detected"** — The Express web server was starting inside the async bootstrap block after `client.login()`, which could take several seconds. Render's port scanner would time out before any port was bound.
+  - **`src/index.js`**: Moved `new ShardClient()` and `startWebServer()` to before `client.login()` so the HTTP server starts listening immediately on startup, before any async operations begin. The `/health` endpoint gracefully returns `bot: 'disconnected'` until the bot is logged in and switches to `bot: 'connected'` after.
+  - **`src/web/server.js`**: Added `process.env.PORT` to the port fallback chain (`process.env.PORT || process.env.WEB_PORT || 3000`), since Render injects the `PORT` environment variable (not `WEB_PORT`).
+- **Worker `fetch failed` — double `https://` protocol in COORDINATOR_URL** — If the `COORDINATOR_URL` environment variable was accidentally set with a duplicate protocol prefix (e.g., `https://https://example.com`), the worker would fail to register with a malformed URL fetch error.
+  - **`src/worker.js`**: Added a regex `/(https?:\/\/)+/i` to strip duplicate protocol prefixes from `COORDINATOR_URL`, normalizing it to a single protocol.
+- **`error: No such remote 'origin'` console noise** — When running in environments without a git `origin` remote (e.g., Render deploy instances), the `getGithubRepo()` function in `git-sync.js` would print an error to stderr via `execSync`. While functionally harmless, the error message was confusing.
+  - **`src/git-sync.js`**: Added `stdio: ['pipe', 'pipe', 'ignore']` to suppress stderr output from the `git remote get-url origin` command, since a missing origin remote is an expected condition in some environments.
+
+---
+
 *For a full list of changes, see the [git commit log](https://github.com/limey-bot/limey/commits/main).*

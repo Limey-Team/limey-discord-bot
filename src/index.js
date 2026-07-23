@@ -96,12 +96,24 @@ captchaGen.initCaptcha().catch(err =>
   console.error('[Shard 0] [Captcha] Font init failed:', err.message)
 );
 
+// ── Create ShardClient & Start Web Server Early ──────────────────
+// Start the Express server before client.login() so Render detects the port
+// immediately. The health endpoint returns bot: 'disconnected' until login.
+const shardClient = new ShardClient(client, coordinator);
+startWebServer(client, shardClient, coordinator)
+  .then(() => console.log(`[Web] Dashboard server started on port ${process.env.PORT || process.env.WEB_PORT || 3000}`))
+  .catch(err => console.error('[Web] Failed to start web server:', err.message));
+
 // ── Bootstrap ─────────────────────────────────────────────────────────
 (async () => {
   try {
     // Login shard 0
     await client.login(token);
     console.log(`[Shard 0] Logged in as ${client.user.tag}`);
+
+    // Refresh shard client cache now that the bot is logged in
+    await shardClient.refresh();
+    shardClient.markReady(true);
 
     // Register commands once ready
     client.once('clientReady', async () => {
@@ -114,18 +126,10 @@ captchaGen.initCaptcha().catch(err =>
       );
     }
 
-    // Create a shard client proxy for the web server
-    const shardClient = new ShardClient(client, coordinator);
-    await shardClient.refresh();
-    shardClient.markReady(true);
-
     // Start subsystems that run in the main process
     votes.init();
     botManager.loadTokensFromEnv();
     botManager.startAllSavedBots();
-
-    // Start the web dashboard + coordinator API
-    await startWebServer(client, shardClient, coordinator);
 
     // Check for updates and send announcement to support server
     announce.init(client).catch(err =>

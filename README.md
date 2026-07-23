@@ -117,7 +117,7 @@ A full-featured Discord bot with **comprehensive event logging, moderation tools
 - **Offline caching** — Service Worker caches dashboard assets for offline access
 - **Offline banner** — shows when connection is lost, cached content remains visible
 - **Interactive help guide** — press `?` anywhere in the dashboard
-- `GET /health` — health check endpoint
+- `GET /health` — health check endpoint (returns `{ status: "ok", bot: "connected"| "disconnected" }` — the server starts listening immediately, so Render detects the port even before the bot finishes logging in)
 
 ## Setup
 
@@ -308,7 +308,7 @@ npm run start:worker
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `COORDINATOR_URL` | ✅ Yes | — | URL of the main server (e.g., `https://limey-discord-bot.onrender.com`) |
+| `COORDINATOR_URL` | ✅ Yes | — | URL of the main server (e.g., `https://limey-discord-bot.onrender.com`). Duplicate protocol prefixes (e.g., `https://https://...`) are automatically normalized. |
 | `MASTER_API_KEY` | ✅ Yes | — | Must match the main server's key |
 | `DISCORD_TOKEN` | ✅ Yes | — | Same bot token as the main server |
 | `WORKER_URL` | No | auto | This worker's public URL (for guild/user lookup routing) |
@@ -326,7 +326,7 @@ npm run start:worker
 | `DISCORD_CLIENT_SECRET` | For OAuth | — | Discord app client secret for OAuth |
 | `BOT_OWNER_ID` | No | — | Your Discord user ID — grants full dashboard access + owner-only commands |
 | `DASHBOARD_URL` | No | `http://localhost:3000` | Base URL for OAuth redirect |
-| `WEB_PORT` | No | `3000` | Dashboard web server port |
+| `WEB_PORT` | No | `3000` | Dashboard web server port (falls back to `PORT` env var if set — Render's standard) |
 | `SHARD_COUNT` | Yes (distributed) | `2` | Total shard count (shard 0 + N-1 worker slots) |
 | `MASTER_API_KEY` | Yes (distributed) | — | Shared secret for worker shard authentication |
 | `COORDINATOR_URL` | For workers | — | Main server URL for worker registration |
